@@ -22,7 +22,7 @@ https://github.com/IntelRealSense/librealsense/releases
 Open a terminal in the directory where this file is located. Then create a
 virtual environment:
 ```
-python3 -m venv venv
+python -m venv venv
 ```
 
 Activate the environment on Windows:
