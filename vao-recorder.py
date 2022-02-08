@@ -4,6 +4,7 @@ import typer
 import yaml
 
 from PyInquirer import prompt
+from functools import partial
 from typing import Optional
 from datetime import datetime
 from pathlib import Path
@@ -19,12 +20,23 @@ MICROPHONES = {
     }
 
 
-def write_audio(data, frames, time, status):
-    pass
-
-
-def record_audio(device_id, output_folder):
-    pass
+def record_audio(
+        device_id: int,
+        output_path: Path,
+        samplerate: int = None,
+        channels: int = None,
+        **stream_kwargs
+    ) -> sd.InputStream:
+    with sf.SoundFile(
+        output_path, 'x', samplerate=samplerate, channels=channels
+        ) as f:
+        return sd.InputStream(
+            device=device_id,
+            samplerate=samplerate,
+            channels=channels,
+            callback=lambda data, frames, time, status: f.write(data),
+            **stream_kwargs
+            )
 
 
 def record_video(device_id, output_folder):
@@ -104,10 +116,17 @@ def record(
     ) -> Path:
     config = get_config(config_path)
     output_folder.mkdir(exist_ok=True, parents=True)
-    for device_id, microphone in config.get('microphones', {}).items():
-        name = f"{device_id} {microphone.pop('name', '')}"
+    streams = []
+    for i, (_id, mic) in enumerate(config.get('microphones', {}).items()):
+        name = f"{_id} {mic.pop('name', '')}"
         try:
-            stream = sd.InputStream(device=device_id, **microphone)
+            streams.append(
+                record_audio(
+                    device_id=_id,
+                    output_path=output_folder / f'audio{i}.wav',
+                    **mic
+                    )
+                )
         except TypeError as e:
             typer.secho(
                 f'Failed to open microphone `{name}`, review the '
@@ -115,7 +134,7 @@ def record(
                 fg='red'
                 )
             raise typer.Exit(code=1)
-        typer.echo(microphone)
+        # TODO write metadata in audio{i}.txt
     for camera in config.get('cameras', []):
         typer.echo(camera)
 
