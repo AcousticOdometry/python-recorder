@@ -1,9 +1,6 @@
 cameras: {}
 microphones:
-  # yaml microphones should match the call signature of sounddevice.InputStream
-  # https://python-sounddevice.readthedocs.io/en/0.4.4/api/streams.html#sounddevice.InputStream
-  17: # device_id
+  1:
     channels: 2
-    name: Microphone (Realtek HD Audio Mic input) # won't be used
+    name: "Micr\xF3fono (Realtek(R) Audio)"
     samplerate: 44100.0
-    stupid: asdf
