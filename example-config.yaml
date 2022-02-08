@@ -1,0 +1,9 @@
+cameras: {}
+microphones:
+  # A microphone configuration should match the call signature of
+  # `sounddevice.InputStream` as it will be used on the call.
+  # https://python-sounddevice.readthedocs.io/en/0.4.4/api/streams.html#sounddevice.InputStream
+  17: # device_id
+    name: Realtek HD Audio Mic input # Optional, human-readable device_id
+    channels: 2
+    samplerate: 44100.0
