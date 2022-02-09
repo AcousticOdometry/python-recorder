@@ -38,3 +38,27 @@ Finally, install dependencies with pip:
 ```
 pip install -r requirements.txt
 ```
+
+# Usage
+Check the usage with the `--help` option:
+```
+python vao-recorder.py --help
+```
+
+# Workflow
+
+Configure the devices to be used. One can always modify the configuration
+manually in the generated `yaml` file.
+```
+python vao-recorder.py config
+```
+
+Test that the chosen audio devices are working
+```
+python vao-recorder.py test-audio
+```
+
+Record an experiment with the chosen devices
+```
+python vao-recorder.py record
+```
