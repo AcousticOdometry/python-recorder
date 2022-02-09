@@ -1,10 +1,11 @@
+import pyrealsense2 as rs
 import sounddevice as sd
 import numpy as np
 import typer
 import yaml
 import wave
 
-from typing import Optional, List, Tuple
+from typing import Optional, Tuple
 from PyInquirer import prompt
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,14 @@ DEFAULT_OUTPUT_FOLDER = Path(__file__).parent / 'output' / \
 MICROPHONES = {
     i: d
     for i, d in enumerate(sd.query_devices()) if d['max_input_channels'] > 0
+    }
+CAMERAS = {
+    'RealSense': {
+        d.get_info(rs.camera_info.serial_number): {
+            'name': d.get_info(rs.camera_info.name)
+            }
+        for d in rs.context().query_devices()
+        }
     }
 
 
@@ -34,10 +43,24 @@ def wave_read(filename: Path) -> Tuple[np.ndarray, int]:
             )
 
 
-@app.command()
-def microphones():
-    for id, d in MICROPHONES.items():
-        typer.echo(f"{id}:\n\tname: {d['name']}")
+@app.command(help='Display the available microphones')
+def microphones(verbose: bool = False):
+    microphones = MICROPHONES
+    if not verbose:
+        microphones = {i: d['name'] for i, d in microphones.items()}
+    typer.echo('Microphones:\n' + yaml.dump(microphones))
+
+
+@app.command(help='Display the available cameras')
+def cameras(verbose: bool = False):
+    cameras = CAMERAS
+    if not verbose:
+        cameras = {
+            k: {sn: d['name']
+                for sn, d in v.items()}
+            for k, v in cameras.items()
+            }
+    typer.echo('Cameras:\n' + yaml.dump(cameras))
 
 
 @app.command(help='Create a configuration `yaml` file.')
@@ -66,8 +89,8 @@ def config(
             })['device_id']
         config['microphones'][device_id] = {
             'name': MICROPHONES[device_id]['name'],
-            'samplerate': MICROPHONES[device_id]['default_samplerate'],
-            'channels': MICROPHONES[device_id]['max_input_channels'],
+            'samplerate': int(MICROPHONES[device_id]['default_samplerate']),
+            'channels': int(MICROPHONES[device_id]['max_input_channels']),
             }
     with open(output, 'w') as f:
         f.write(yaml.dump(config))
@@ -93,8 +116,7 @@ class AudioRecorder:
     def __init__(
             self,
             config: dict,  # Configuration dictionary
-            output_folder:
-        Path,  # Folder where the audio files should be written
+            output_folder: Path,  # Folder where data should be written
         ):
         self.output_folder = output_folder
         self.microphones = config.get('microphones', {})
@@ -162,8 +184,40 @@ class AudioRecorder:
         self.stop()
 
 
-class VideoRecorder:
-    pass
+class RealSenseRecorder:
+
+    def __init__(
+            self,
+            config: dict,  # Configuration dictionary
+            output_folder: Path,  # Folder where data should be written
+        ):
+        self.output_folder = output_folder
+        self.cameras = config.get('cameras', {}).get('RealSense', {})
+        self.configs = []
+        # Get RealSense camera streams
+        for i, (sn, cam) in enumerate(self.cameras.items()):
+            # Write configuration in a yaml file
+            with open(output_folder / f'rsvideo{i}.yaml', 'w') as f:
+                f.write(yaml.dump(cam))
+            config = rs.config()
+            config.enable_device(sn)
+            config.enable_all_streams()
+            config.enable_record_to_file(output_folder / f'rsvideo{i}.bag')
+            self.configs[i] = config
+        self.pipelines = []
+
+    def start(self):
+        for config in self.configs:
+            pipeline = rs.pipeline()
+            pipeline.start(config)
+            self.pipelines.append(pipeline)
+
+    def stop(self):
+        for pipeline in self.pipelines:
+            pipeline.stop()
+
+    def __del__(self):
+        self.stop()
 
 
 @app.command(help='Record visual and acoustic data.')
@@ -182,18 +236,17 @@ def record(
     ) -> Path:
     config = get_config(config_path)
     output_folder.mkdir(exist_ok=True, parents=True)
-    # Setup audio recording
+    # Setup recording
     audio = AudioRecorder(config, output_folder)
-    # Setup video recording
-    for camera in config.get('cameras', []):
-        # TODO read video cameras
-        typer.echo(camera)
+    video = RealSenseRecorder(config, output_folder)
     # Start the recording
     audio.start()
+    video.start()
     # Wait for user input
     input('Press `Enter` to stop recording.')
     # Cleanup the recording
     audio.stop()
+    video.stop()
     return output_folder
 
 

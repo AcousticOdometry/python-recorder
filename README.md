@@ -27,7 +27,7 @@ python -m venv venv
 
 Activate the environment on Windows:
 ```
-venv\Scripts\activate.bat
+venv\Scripts\activate
 ```
 or on MacOS and Linux:
 ```
