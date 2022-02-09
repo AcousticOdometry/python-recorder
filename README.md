@@ -55,7 +55,7 @@ python vao-recorder.py config
 
 Test that the chosen audio devices are working
 ```
-python vao-recorder.py test-audio
+python vao-recorder.py test-microphones
 ```
 
 Record an experiment with the chosen devices
