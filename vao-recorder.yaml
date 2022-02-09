@@ -1,14 +1,2 @@
-cameras: {}
-microphones:
-  1:
-    channels: 2
-    name: "Desktop Microphone (R\xD8DE VideoM"
-    samplerate: 44100.0
-  4:
-    channels: 2
-    name: Microphone (USB PnP Audio Devic
-    samplerate: 44100.0
-  9:
-    channels: 2
-    name: Primary Sound Capture Driver
-    samplerate: 44100.0
+microphones: {}
+real_sense_devices: {}

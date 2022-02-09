@@ -13,19 +13,27 @@ from pathlib import Path
 app = typer.Typer()
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent / 'vao-recorder.yaml'
+DEFAULT_CONFIG_PATH_OPTION = typer.Option(
+    DEFAULT_CONFIG_PATH,
+    help="Path to a `yaml` config file. Run `config` command to generate one."
+    )
 DEFAULT_OUTPUT_FOLDER = Path(__file__).parent / 'output' / \
     datetime.now().strftime('VAO_%Y-%m-%d_%H-%M-%S')
+DEFAULT_OUTPUT_FOLDER_OPTION = typer.Option(
+    DEFAULT_OUTPUT_FOLDER,
+    help="""
+    Path to a folder where the recorded data and the recording configuration
+    will be stored."""
+    )
 MICROPHONES = {
     i: d
     for i, d in enumerate(sd.query_devices()) if d['max_input_channels'] > 0
     }
-CAMERAS = {
-    'RealSense': {
-        d.get_info(rs.camera_info.serial_number): {
-            'name': d.get_info(rs.camera_info.name)
-            }
-        for d in rs.context().query_devices()
+REAL_SENSE_DEVICES = {
+    d.get_info(rs.camera_info.serial_number): {
+        'name': d.get_info(rs.camera_info.name)
         }
+    for d in rs.context().query_devices()
     }
 
 
@@ -45,22 +53,18 @@ def wave_read(filename: Path) -> Tuple[np.ndarray, int]:
 
 @app.command(help='Display the available microphones')
 def microphones(verbose: bool = False):
-    microphones = MICROPHONES
+    devices = MICROPHONES
     if not verbose:
-        microphones = {i: d['name'] for i, d in microphones.items()}
-    typer.echo('Microphones:\n' + yaml.dump(microphones))
+        devices = {i: d['name'] for i, d in devices.items()}
+    typer.echo('Microphones:\n' + yaml.dump(devices))
 
 
-@app.command(help='Display the available cameras')
-def cameras(verbose: bool = False):
-    cameras = CAMERAS
+@app.command(help='Display the available RealSense devices')
+def real_sense_devices(verbose: bool = False):
+    devices = REAL_SENSE_DEVICES
     if not verbose:
-        cameras = {
-            k: {sn: d['name']
-                for sn, d in v.items()}
-            for k, v in cameras.items()
-            }
-    typer.echo('Cameras:\n' + yaml.dump(cameras))
+        devices = {i: d['name'] for i, d in devices.items()}
+    typer.echo('Real Sense devices:\n' + yaml.dump(devices))
 
 
 @app.command(help='Create a configuration `yaml` file.')
@@ -70,10 +74,9 @@ def config(
             help="Path to where the configuration yaml file should be written."
             )
     ) -> dict:
-    config = {'microphones': {}, 'cameras': {}}
-    while typer.confirm(
-        f"Do you want to add {'another' if config['microphones'] else 'a'} "
-        "microphone?"
+    config = {'microphones': {}, 'real_sense_devices': {}}
+    while MICROPHONES and typer.confirm(
+        f"Add {'another' if config['microphones'] else 'a'} microphone?"
         ):
         device_id = prompt({
             'type':
@@ -91,6 +94,25 @@ def config(
             'name': MICROPHONES[device_id]['name'],
             'samplerate': int(MICROPHONES[device_id]['default_samplerate']),
             'channels': int(MICROPHONES[device_id]['max_input_channels']),
+            }
+    while REAL_SENSE_DEVICES and typer.confirm(
+        f"Add {'another' if config['real_sense_devices'] else 'a'} "
+        "RealSense device?"
+        ):
+        serial_number = prompt({
+            'type':
+                'list',
+            'name':
+                'serial_number',
+            'message':
+                f"Select the RealSense device to add to the configuration:",
+            'choices': [{
+                'name': f"{sn} {d['name']}",
+                'value': sn
+                } for sn, d in REAL_SENSE_DEVICES.items()],
+            })['serial_number']
+        config['real_sense_devices'][serial_number] = {
+            'name': MICROPHONES[device_id]['name'],
             }
     with open(output, 'w') as f:
         f.write(yaml.dump(config))
@@ -192,17 +214,17 @@ class RealSenseRecorder:
             output_folder: Path,  # Folder where data should be written
         ):
         self.output_folder = output_folder
-        self.cameras = config.get('cameras', {}).get('RealSense', {})
+        self.devices = config.get('real_sense_devices', {})
         self.configs = []
         # Get RealSense camera streams
-        for i, (sn, cam) in enumerate(self.cameras.items()):
+        for i, (sn, cam) in enumerate(self.devices.items()):
             # Write configuration in a yaml file
-            with open(output_folder / f'rsvideo{i}.yaml', 'w') as f:
+            with open(output_folder / f'rsdevice{i}.yaml', 'w') as f:
                 f.write(yaml.dump(cam))
             config = rs.config()
             config.enable_device(sn)
             config.enable_all_streams()
-            config.enable_record_to_file(output_folder / f'rsvideo{i}.bag')
+            config.enable_record_to_file(output_folder / f'rsdevice{i}.bag')
             self.configs[i] = config
         self.pipelines = []
 
@@ -222,31 +244,22 @@ class RealSenseRecorder:
 
 @app.command(help='Record visual and acoustic data.')
 def record(
-    config_path: Optional[Path] = typer.Option(
-        DEFAULT_CONFIG_PATH,
-        help="""
-        Path to a `yaml` config file. Run `config` command to generate one."""
-        ),
-    output_folder: Optional[Path] = typer.Option(
-        DEFAULT_OUTPUT_FOLDER,
-        help="""
-        Path to a folder where the recorded data and the recording
-        configuration will be stored."""
-        ),
+    config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
+    output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
     ) -> Path:
     config = get_config(config_path)
     output_folder.mkdir(exist_ok=True, parents=True)
     # Setup recording
     audio = AudioRecorder(config, output_folder)
-    video = RealSenseRecorder(config, output_folder)
+    realsense = RealSenseRecorder(config, output_folder)
     # Start the recording
     audio.start()
-    video.start()
+    realsense.start()
     # Wait for user input
     input('Press `Enter` to stop recording.')
     # Cleanup the recording
     audio.stop()
-    video.stop()
+    realsense.stop()
     return output_folder
 
 
@@ -255,18 +268,9 @@ def record(
     Record 5 seconds from the configured microphones and play back the audio of
     each recording."""
     )
-def test_audio(
-    config_path: Optional[Path] = typer.Option(
-        DEFAULT_CONFIG_PATH,
-        help="""
-        Path to a `yaml` config file. Run `config` command to generate one."""
-        ),
-    output_folder: Optional[Path] = typer.Option(
-        DEFAULT_OUTPUT_FOLDER,
-        help="""
-        Path to a folder where the recorded data and the recording
-        configuration will be stored."""
-        ),
+def test_microphones(
+    config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
+    output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
     ) -> Path:
     config = get_config(config_path)
     output_folder.mkdir(exist_ok=True, parents=True)
@@ -284,6 +288,26 @@ def test_audio(
             typer.echo(f.read())
         data, fs = wave_read(_file)
         sd.play(data, samplerate=fs, blocking=True)
+
+
+@app.command(
+    help="""
+    Record 5 seconds from the configured cameras. The generated `.bag` files
+    need to be manually checked using `ROS` or the RealSense SDK."""
+    )
+def test_real_sense_devices(
+    config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
+    output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
+    ) -> Path:
+    config = get_config(config_path)
+    output_folder.mkdir(exist_ok=True, parents=True)
+    # Record 5 seconds of audio
+    realsense = RealSenseRecorder(config, output_folder)
+    realsense.start()
+    with typer.progressbar(range(50), label='Recording...') as progress:
+        for _ in progress:
+            sd.sleep(100)  # milliseconds
+    realsense.stop()
 
 
 if __name__ == '__main__':
