@@ -1,9 +1,10 @@
 import sounddevice as sd
-import soundfile as sf
+import numpy as np
 import typer
 import yaml
+import wave
 
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from PyInquirer import prompt
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,20 @@ MICROPHONES = {
     i: d
     for i, d in enumerate(sd.query_devices()) if d['max_input_channels'] > 0
     }
+
+
+# Utility function that reads the whole `wav` file content into a numpy array
+def wave_read(filename: Path) -> Tuple[np.ndarray, int]:
+    with wave.open(str(filename), 'rb') as f:
+        return (
+            np.reshape(
+                np.frombuffer(
+                    f.readframes(f.getnframes()),
+                    dtype=f'int{f.getsampwidth()*8}'
+                    ), (-1, f.getnchannels())
+                ),
+            f.getframerate(),
+            )
 
 
 @app.command()
@@ -73,57 +88,81 @@ def get_config(path=DEFAULT_CONFIG_PATH) -> dict:
     return _config
 
 
-def get_audio_stream(
-    device_id: int,  # Device identifier
-    output_path: Path,  # Path to where the audio file should be written
-    samplerate: int = None,  # Sample rate
-    channels: int = None,  # Number of channels
-    **
-    stream_kwargs,  # Additional keyword arguments for sounddevice.InputStream
-    # https://python-sounddevice.readthedocs.io/en/0.4.4/api/streams.html#sounddevice.InputStream
-    ) -> sd.InputStream:
-    f = sf.SoundFile(
-        output_path, 'x', samplerate=int(samplerate), channels=int(channels)
-        )
-    return sd.InputStream(
-        device=device_id,
-        samplerate=samplerate,
-        channels=channels,
-        callback=lambda data, frames, time, status: f.write(data),
-        finished_callback=f.close,
-        **stream_kwargs
-        )
+class AudioRecorder:
 
-
-def get_audio_streams(
-        config: dict,  # Configuration dictionary
-        output_folder: Path,  # Folder where the audio files should be written
-    ) -> List[sd.InputStream]:
-    streams = []
-    for i, (_id, mic) in enumerate(config.get('microphones', {}).items()):
-        name = f"{_id} {mic.pop('name', '')}"
-        try:
-            streams.append(
-                get_audio_stream(
+    def __init__(
+            self,
+            config: dict,  # Configuration dictionary
+            output_folder:
+        Path,  # Folder where the audio files should be written
+        ):
+        self.output_folder = output_folder
+        self.microphones = config.get('microphones', {})
+        for i, (_id, mic) in enumerate(self.microphones.items()):
+            # Write configuration in a yaml file
+            with open(output_folder / f'audio{i}.yaml', 'w') as f:
+                f.write(yaml.dump(mic))
+            # Create audio stream
+            name = f"{_id} {mic.pop('name', '')}"
+            try:
+                self.microphones[_id]['stream'] = self._get_stream(
                     device_id=_id,
                     output_path=output_folder / f'audio{i}.wav',
                     **mic
                     )
-                )
-        except TypeError as e:
-            typer.secho(
-                f'Failed to open microphone `{name}`, review its '
-                f'configuration {mic}\nError: {e}',
-                fg='red'
-                )
-            raise e
-        # Write configuration in a yaml file
-        with open(output_folder / f'audio{i}.yaml', 'w') as f:
-            f.write(yaml.dump(mic))
-    return streams
+            except Exception as e:
+                raise RuntimeError(
+                    f'Failed to open microphone `{name}`, review its '
+                    f'configuration {mic}\nError: {e}'
+                    )
+
+    @staticmethod
+    def _get_stream(
+        device_id: int,  # Device identifier
+        output_path: Path,  # Path to where the audio file should be written
+        samplewidth: int = 2,  # Sample width in bytes
+        samplerate: int = None,  # Sample rate
+        channels: int = None,  # Number of channels
+        **stream_kwargs,  # Additional keyword arguments for sd.RawInputStream
+        # https://python-sounddevice.readthedocs.io/en/0.4.4/api/streams.html#sounddevice.InputStream
+        ) -> sd.InputStream:
+        f = wave.open(str(output_path), 'wb')
+        f.setnchannels(int(channels))
+        f.setframerate(int(samplerate))
+        f.setsampwidth(samplewidth)
+        return sd.RawInputStream(
+            device=device_id,
+            dtype=f'int{samplewidth*8}',
+            samplerate=samplerate,
+            channels=channels,
+            callback=lambda data, N, t, status: f.writeframesraw(data),
+            finished_callback=f.close,
+            **stream_kwargs
+            )
+
+    @property
+    def streams(self):
+        return [
+            m['stream'] for m in self.microphones.values() if 'stream' in m
+            ]
+
+    def start(self):
+        for stream in self.streams:
+            stream.start()
+        # Write start timestamp
+        with open(self.output_folder / 'audio_start.txt', 'w') as f:
+            f.write(str(datetime.now().timestamp()))
+
+    def stop(self):
+        for stream in self.streams:
+            stream.stop()
+            stream.close()
+
+    def __del__(self):
+        self.stop()
 
 
-def record_video(device_id, output_folder):
+class VideoRecorder:
     pass
 
 
@@ -143,24 +182,18 @@ def record(
     ) -> Path:
     config = get_config(config_path)
     output_folder.mkdir(exist_ok=True, parents=True)
-
     # Setup audio recording
-    audio_streams = get_audio_streams(config, output_folder)
-
+    audio = AudioRecorder(config, output_folder)
     # Setup video recording
     for camera in config.get('cameras', []):
         # TODO read video cameras
         typer.echo(camera)
-
     # Start the recording
-    for stream in audio_streams:
-        stream.start()
+    audio.start()
     # Wait for user input
     input('Press `Enter` to stop recording.')
     # Cleanup the recording
-    for stream in audio_streams:
-        stream.stop()
-        stream.close()
+    audio.stop()
     return output_folder
 
 
@@ -184,26 +217,24 @@ def test_audio(
     ) -> Path:
     config = get_config(config_path)
     output_folder.mkdir(exist_ok=True, parents=True)
-    print(sf._libname)
-    print(sf.available_formats())
     # Record 5 seconds of audio
-    audio_streams = get_audio_streams(config, output_folder)
-    for stream in audio_streams:
-        stream.start()
+    audio = AudioRecorder(config, output_folder)
+    audio.start()
     with typer.progressbar(range(50), label='Recording...') as progress:
         for _ in progress:
             sd.sleep(100)  # milliseconds
-    for stream in audio_streams:
-        stream.stop()
-        stream.close()
-    sd.sleep(1000)
+    audio.stop()
     # Play audio
     for _file in output_folder.glob('audio*.wav'):
         typer.echo(f'Playing {_file}')
-        with open(_file, 'r') as f:
-            data, fs = sf.read(f, always_2d=True)
-            sd.play(data, samplerate=fs)
+        with open(_file.with_suffix('.yaml')) as f:
+            typer.echo(f.read())
+        data, fs = wave_read(_file)
+        sd.play(data, samplerate=fs, blocking=True)
 
 
 if __name__ == '__main__':
-    app()
+    try:
+        app()
+    except RuntimeError as e:
+        typer.secho(str(e), fg='red')
