@@ -359,7 +359,21 @@ class RealSenseRecorder(Recorder):
 
 
 class VideoRecorder(Recorder):
-    pass
+    device = Camera
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.devices:
+            raise NotImplementedError(
+                'Video recording not implemented yet. Remove cameras from the '
+                'configuration. Use microphones or RealSense devices instead.'
+                )
+
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
 
 
 @app.command(help='Record visual and acoustic data.')
