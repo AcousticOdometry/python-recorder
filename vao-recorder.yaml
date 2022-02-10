@@ -1,2 +1,6 @@
-microphones: {}
-real_sense_devices: {}
+microphone:
+  1:
+    channels: 2
+    name: Microphone (Mic-Web Camera)
+    samplerate: 44100
+real_sense: {}

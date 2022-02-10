@@ -23,13 +23,13 @@ import yaml
 import wave
 import cv2
 
+from typing import Optional, Tuple, Callable
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
 from PyInquirer import prompt
 from datetime import datetime
-from functools import cache
 from pathlib import Path
 
+# Command line application
 app = typer.Typer(
     add_completion=False,
     help=__doc__,
@@ -49,72 +49,11 @@ DEFAULT_OUTPUT_FOLDER_OPTION = typer.Option(
     will be stored."""
     )
 
-
-# TODO
-class Config(dict):
-
-    def __init__(self, path: Path = DEFAULT_CONFIG_PATH):
-        if path.exists():
-            with open(path, 'r') as f:
-                _config = yaml.safe_load(f)
-        if not _config:
-            typer.secho(
-                f'No configuration found in {path}. Generate one.',
-                fg='black',
-                bg='yellow'
-                )
-            _config = config(path)
-        self.update(**_config)
-
-    @staticmethod
-    @cache
-    def all_microphones():
-        pass
-
-    @staticmethod
-    @cache
-    def all_real_sense():
-        pass
-
-    # ! Checks the first 10 cameras only
-    @staticmethod
-    @cache
-    def all_cameras(max_index: int = 10) -> Tuple[int, dict]:
-        print('Searching for cameras...')
-        _cameras = {}
-        for i in range(max_index):
-            if (cap := cv2.VideoCapture(i)).isOpened():
-                _cameras[i] = {
-                    'cap': cap,
-                    'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                    'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                    }
-        return _cameras
+# -------------------------------- Utilities -------------------------------- #
 
 
-MICROPHONES = {
-    i: d
-    for i, d in enumerate(sd.query_devices()) if d['max_input_channels'] > 0
-    }
-REAL_SENSE_DEVICES = {
-    d.get_info(rs.camera_info.serial_number): {
-        'name': d.get_info(rs.camera_info.name)
-        }
-    for d in rs.context().query_devices()
-    }
-
-# CAMERAS = {
-#     i: {
-#         'cap': cap,
-#         'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-#         'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-#         }
-#     for i in range(_MAX_CAMERA_IDX) if (cap := cv2.VideoCapture(i)).isOpened()
-#     }
-
-
-# Utility function that reads the whole `wav` file content into a numpy array
 def wave_read(filename: Path) -> Tuple[np.ndarray, int]:
+    # Utility function that reads the whole `wav` file content into a numpy
     with wave.open(str(filename), 'rb') as f:
         return (
             np.reshape(
@@ -127,30 +66,127 @@ def wave_read(filename: Path) -> Tuple[np.ndarray, int]:
             )
 
 
+def choose(message: str, choices: list):
+    # Utility function that asks the user to configure the devices
+    return prompt({
+        'type': 'list',
+        'name': 'choice',
+        'message': message,
+        'choices': choices,
+        })['choice']
+
+
+def wait(seconds: int = 4, label: str = 'Recording...', **kwargs):
+    with typer.progressbar(range(seconds * 10), label=label, **kwargs) as p:
+        for _ in p:
+            sd.sleep(100)
+
+
+# ------------------------------ Configuration ------------------------------ #
+
+
+class Device:
+
+    def __init__(self, find: Callable, name: str) -> None:
+        self.find = find
+        self.name = name
+
+    @property
+    def config_key(self) -> str:
+        return self.name.lower()
+
+    # Define which attributes from the device are passed to the `config`
+    # dictionary
+    config_map = {
+        # (key in `config`): (key in `device` or value getter)
+        'name': 'name',
+        }
+
+    def choose_config(self) -> dict:
+        choices = {}
+        devices = self.find()
+        while devices and typer.confirm(
+            f"Add {'another' if choices else 'a'} {self.name} device?"
+            ):
+            _id = choose(
+                message=f"Select the microphone to add to the configuration:",
+                choices=[{
+                    'name': f"{_id} {d['name']}",
+                    'value': _id
+                    } for _id, d in devices.items()]
+                )
+            choices[_id] = {
+                k: devices[_id][v] if isinstance(v, str) else v(devices[_id])
+                for k, v in self.config_map.items()
+                }
+        return choices
+
+
+def find_microphones() -> dict:
+    return {
+        i: d
+        for i, d in enumerate(sd.query_devices())
+        if d['max_input_channels'] > 0
+        }
+
+
+Microphone = Device(find_microphones, 'microphone')
+Microphone.config_map.update({
+    'samplerate': lambda device: int(device['default_samplerate']),
+    'channels': lambda device: int(device['max_input_channels']),
+    })
+
+
 @app.command(help='Display the available microphones')
 def show_microphones(verbose: bool = False):
-    devices = MICROPHONES
+    devices = Microphone.find()
     if not verbose:
         devices = {i: d['name'] for i, d in devices.items()}
     typer.echo('Microphones:\n' + yaml.dump(devices))
 
 
+def find_realsense() -> dict:
+    return {
+        d.get_info(rs.camera_info.serial_number): {
+            'name': d.get_info(rs.camera_info.name)
+            }
+        for d in rs.context().query_devices()
+        }
+
+
+RealSense = Device(find_realsense, 'RealSense')
+
+
 @app.command(help='Display the available RealSense devices')
-def show_real_sense_devices(verbose: bool = False):
-    devices = REAL_SENSE_DEVICES
+def show_realsense(verbose: bool = False):
+    devices = RealSense.find()
     if not verbose:
         devices = {i: d['name'] for i, d in devices.items()}
-    typer.echo('Real Sense devices:\n' + yaml.dump(devices))
+    typer.echo('RealSense devices:\n' + yaml.dump(devices))
+
+
+def find_cameras(max_index: int = 10) -> dict:
+    return {
+        i: {
+            'cap': cap,
+            'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            }
+        for i in range(max_index) if (cap := cv2.VideoCapture(i)).isOpened()
+        }
+
+
+Camera = Device(find_cameras, 'camera')
 
 
 @app.command(help='Display the available cameras')
 def show_cameras():
+    print(Camera.find())
     devices = {
         i: {k: v
             for k, v in c.items() if k != 'cap'}
-        for i, c in Config.cameras().items()
+        for i, c in Camera.find()
         }
-    print([c for i, c in Config.cameras().items()])
     typer.echo('Real Sense devices:\n' + yaml.dump(devices))
 
 
@@ -161,46 +197,9 @@ def config(
             help="Path to where the configuration yaml file should be written."
             )
     ) -> dict:
-    config = {'microphones': {}, 'real_sense_devices': {}}
-    while MICROPHONES and typer.confirm(
-        f"Add {'another' if config['microphones'] else 'a'} microphone?"
-        ):
-        device_id = prompt({
-            'type':
-                'list',
-            'name':
-                'device_id',
-            'message':
-                f"Select the microphone to add to the configuration:",
-            'choices': [{
-                'name': f"{i} {d['name']}",
-                'value': i
-                } for i, d in MICROPHONES.items()],
-            })['device_id']
-        config['microphones'][device_id] = {
-            'name': MICROPHONES[device_id]['name'],
-            'samplerate': int(MICROPHONES[device_id]['default_samplerate']),
-            'channels': int(MICROPHONES[device_id]['max_input_channels']),
-            }
-    while REAL_SENSE_DEVICES and typer.confirm(
-        f"Add {'another' if config['real_sense_devices'] else 'a'} "
-        "RealSense device?"
-        ):
-        serial_number = prompt({
-            'type':
-                'list',
-            'name':
-                'serial_number',
-            'message':
-                f"Select the RealSense device to add to the configuration:",
-            'choices': [{
-                'name': f"{sn} {d['name']}",
-                'value': sn
-                } for sn, d in REAL_SENSE_DEVICES.items()],
-            })['serial_number']
-        config['real_sense_devices'][serial_number] = {
-            'name': MICROPHONES[device_id]['name'],
-            }
+    config = {}
+    for device in [Microphone, RealSense]:
+        config[device.config_key] = device.choose_config()
     with open(output, 'w') as f:
         f.write(yaml.dump(config))
     return config
@@ -220,6 +219,9 @@ def get_config(path=DEFAULT_CONFIG_PATH) -> dict:
     return _config
 
 
+# -------------------------------- Recording -------------------------------- #
+
+
 class Recorder(ABC):
 
     def __init__(
@@ -227,6 +229,13 @@ class Recorder(ABC):
             config: dict,  # Configuration dictionary
             output_folder: Path,  # Folder where data should be written
         ):
+        self.output_folder = output_folder
+        self.devices = config.get(self.device.config_key)
+
+    @property
+    @abstractmethod
+    def device(self) -> Device:
+        # `Device` instance used to get the configuration
         pass
 
     @abstractmethod
@@ -242,20 +251,20 @@ class Recorder(ABC):
 
 
 class AudioRecorder(Recorder):
+    device = Microphone
 
-    def __init__(self, config: dict, output_folder: Path):
-        self.output_folder = output_folder
-        self.microphones = config.get('microphones', {})
-        for i, (_id, mic) in enumerate(self.microphones.items()):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for i, (_id, mic) in enumerate(self.devices.items()):
             # Write configuration in a yaml file
-            with open(output_folder / f'audio{i}.yaml', 'w') as f:
+            with open(self.output_folder / f'audio{i}.yaml', 'w') as f:
                 f.write(yaml.dump(mic))
             # Create audio stream
             name = f"{_id} {mic.pop('name', '')}"
             try:
-                self.microphones[_id]['stream'] = self._get_stream(
+                self.devices[_id]['stream'] = self._get_stream(
                     device_id=_id,
-                    output_path=output_folder / f'audio{i}.wav',
+                    output_path=self.output_folder / f'audio{i}.wav',
                     **mic
                     )
             except Exception as e:
@@ -291,7 +300,7 @@ class AudioRecorder(Recorder):
     @property
     def streams(self):
         return [
-            m['stream'] for m in self.microphones.values() if 'stream' in m
+            m['stream'] for m in self.devices.values() if 'stream' in m
             ]
 
     def start(self):
@@ -308,20 +317,22 @@ class AudioRecorder(Recorder):
 
 
 class RealSenseRecorder(Recorder):
+    device = RealSense
 
-    def __init__(self, config: dict, output_folder: Path):
-        self.output_folder = output_folder
-        self.devices = config.get('real_sense_devices', {})
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.configs = []
         # Get RealSense camera streams
         for i, (sn, cam) in enumerate(self.devices.items()):
             # Write configuration in a yaml file
-            with open(output_folder / f'rsdevice{i}.yaml', 'w') as f:
+            with open(self.output_folder / f'rsdevice{i}.yaml', 'w') as f:
                 f.write(yaml.dump(cam))
             config = rs.config()
             config.enable_device(sn)
             config.enable_all_streams()
-            config.enable_record_to_file(output_folder / f'rsdevice{i}.bag')
+            config.enable_record_to_file(
+                self.output_folder / f'rsdevice{i}.bag'
+                )
             self.configs[i] = config
         self.pipelines = []
 
@@ -360,6 +371,9 @@ def record(
     return output_folder
 
 
+# --------------------------------- Testing --------------------------------- #
+
+
 @app.command(
     help="""
     Record 5 seconds from the configured microphones and play back the audio of
@@ -374,9 +388,7 @@ def test_microphones(
     # Record 5 seconds of audio
     audio = AudioRecorder(config, output_folder)
     audio.start()
-    with typer.progressbar(range(50), label='Recording...') as progress:
-        for _ in progress:
-            sd.sleep(100)  # milliseconds
+    wait(5)
     audio.stop()
     # Play audio
     for _file in output_folder.glob('audio*.wav'):
@@ -392,7 +404,7 @@ def test_microphones(
     Record 5 seconds from the configured cameras. The generated `.bag` files
     need to be manually checked using `ROS` or the RealSense SDK."""
     )
-def test_real_sense_devices(
+def test_realsense(
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
     ) -> Path:
@@ -401,13 +413,12 @@ def test_real_sense_devices(
     # Record 5 seconds of audio
     realsense = RealSenseRecorder(config, output_folder)
     realsense.start()
-    with typer.progressbar(range(50), label='Recording...') as progress:
-        for _ in progress:
-            sd.sleep(100)  # milliseconds
+    wait(5)
     realsense.stop()
 
 
 if __name__ == '__main__':
+    # Launch the command line application
     try:
         app()
     except RuntimeError as e:
