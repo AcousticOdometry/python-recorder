@@ -109,7 +109,7 @@ class Device:
             f"Add {'another' if choices else 'a'} {self.name} device?"
             ):
             _id = choose(
-                message=f"Select the microphone to add to the configuration:",
+                message=f"Select the {self.name} to add to the configuration:",
                 choices=[{
                     'name': f"{_id} {d['name']}",
                     'value': _id
@@ -131,10 +131,11 @@ def find_microphones() -> dict:
 
 
 Microphone = Device(find_microphones, 'microphone')
-Microphone.config_map.update({
+Microphone.config_map = {
     'samplerate': lambda device: int(device['default_samplerate']),
     'channels': lambda device: int(device['max_input_channels']),
-    })
+    **Microphone.config_map,
+    }
 
 
 @app.command(help='Display the available microphones')
@@ -168,9 +169,16 @@ def show_realsense(verbose: bool = False):
 def find_cameras(max_index: int = 10) -> dict:
     return {
         i: {
-            'cap': cap,
-            'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-            'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            'cap':
+                cap,
+            'name':
+                cv2.videoio_registry.getBackendName(
+                    int(cap.get(cv2.CAP_PROP_BACKEND))
+                    ),
+            'width':
+                int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            'height':
+                int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
             }
         for i in range(max_index) if (cap := cv2.VideoCapture(i)).isOpened()
         }
@@ -181,11 +189,11 @@ Camera = Device(find_cameras, 'camera')
 
 @app.command(help='Display the available cameras')
 def show_cameras():
-    print(Camera.find())
+    # Remove the `cap` attribute from the camera devices
     devices = {
         i: {k: v
-            for k, v in c.items() if k != 'cap'}
-        for i, c in Camera.find()
+            for k, v in camera.items() if k != 'cap'}
+        for i, camera in Camera.find().items()
         }
     typer.echo('Real Sense devices:\n' + yaml.dump(devices))
 
@@ -198,10 +206,15 @@ def config(
             )
     ) -> dict:
     config = {}
-    for device in [Microphone, RealSense]:
+    for device in [Microphone, RealSense, Camera]:
         config[device.config_key] = device.choose_config()
     with open(output, 'w') as f:
         f.write(yaml.dump(config))
+    typer.echo(
+        f"Configuration file written to {output}. Remember that it can be "
+        "edited manually. Check the repository for an explained example file "
+        "https://github.com/AcousticOdometry/VAO-recorder/blob/main/example-config.yaml"
+        )
     return config
 
 
@@ -299,9 +312,7 @@ class AudioRecorder(Recorder):
 
     @property
     def streams(self):
-        return [
-            m['stream'] for m in self.devices.values() if 'stream' in m
-            ]
+        return [m['stream'] for m in self.devices.values() if 'stream' in m]
 
     def start(self):
         for stream in self.streams:

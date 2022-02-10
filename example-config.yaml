@@ -1,5 +1,4 @@
-cameras: {}
-microphones:
+microphone:
   # A microphone configuration should match the call signature of
   # `sounddevice.InputStream` as it will be used on the call, except for two
   # optional parameters: `name` and `samplewidth`
@@ -9,3 +8,4 @@ microphones:
     channels: 2
     samplerate: 44100.0
     samplewidth: 2 # Sample width in bytes when stored in the `wav` file
+camera: {}
