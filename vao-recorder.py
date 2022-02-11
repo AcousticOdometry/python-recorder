@@ -206,7 +206,7 @@ def config(
             )
     ) -> dict:
     config = {}
-    for device in [Microphone, RealSense, Camera]:
+    for device in [Microphone, RealSense]:
         config[device.config_key] = device.choose_config()
     with open(output, 'w') as f:
         f.write(yaml.dump(config))
