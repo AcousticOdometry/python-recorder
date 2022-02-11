@@ -82,6 +82,10 @@ def wait(seconds: int = 4, label: str = 'Recording...', **kwargs):
             sd.sleep(100)
 
 
+def typer_warn(message: str):
+    return typer.secho(message, bg='black', fg='yellow')
+
+
 # ------------------------------ Configuration ------------------------------ #
 
 
@@ -105,7 +109,10 @@ class Device:
     def choose_config(self) -> dict:
         choices = {}
         devices = self.find()
-        while devices and typer.confirm(
+        if not devices:
+            typer_warn(f"Could not find {self.name} devices")
+            return choices
+        while typer.confirm(
             f"Add {'another' if choices else 'a'} {self.name} device?"
             ):
             _id = choose(
@@ -223,11 +230,7 @@ def get_config(path=DEFAULT_CONFIG_PATH) -> dict:
         with open(path, 'r') as f:
             _config = yaml.safe_load(f)
     if not _config:
-        typer.secho(
-            f'No configuration found in {path}. Generate one.',
-            fg='black',
-            bg='yellow'
-            )
+        typer_warn(f"No configuration found in {path}. Generate one.")
         _config = config(path)
     return _config
 
