@@ -346,7 +346,7 @@ class RealSenseRecorder(Recorder):
             config.enable_device(sn)
             config.enable_all_streams()
             config.enable_record_to_file(
-                self.output_folder / f'rsdevice{i}.bag'
+                str(self.output_folder / f'rsdevice{i}.bag')
                 )
             self.configs[i] = config
         self.pipelines = []
@@ -439,7 +439,7 @@ def test_realsense(
     ) -> Path:
     config = get_config(config_path)
     output_folder.mkdir(exist_ok=True, parents=True)
-    # Record 5 seconds of audio
+    # Record 5 seconds of video
     realsense = RealSenseRecorder(config, output_folder)
     realsense.start()
     wait(5)
