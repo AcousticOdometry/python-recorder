@@ -383,7 +383,7 @@ class RealSenseRecorder(Recorder):
             yaml_dump(device, to_file=self.output_folder / f'rsdevice{i}.yaml')
             config = rs.config()
             config.enable_device(sn)
-            for stream in streams:
+            for stream in streams.values():
                 parameters = {
                     'stream_type': getattr(rs.stream, stream['type']),
                     'format': getattr(rs.format, stream['format']),
