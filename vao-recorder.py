@@ -157,11 +157,11 @@ def find_realsense() -> dict:
     devices = {}
     for d in rs.context().query_devices():
         sn = d.get_info(rs.camera_info.serial_number)
-        # config = rs.config()
-        # config.enable_device(sn)
-        # config.enable_all_streams()
-        # pipeline = rs.pipeline()
-        # pipeline_profile = pipeline.start(config)
+        config = rs.config()
+        config.enable_device(sn)
+        config.enable_all_streams()
+        pipeline = rs.pipeline()
+        pipeline_profile = pipeline.start(config)
         devices[sn] = {
             'name':
                 d.get_info(rs.camera_info.name),
@@ -171,10 +171,10 @@ def find_realsense() -> dict:
                     'framerate': s.fps(),
                     'name': s.stream_name(),
                     'type': str(s.stream_type())[7:],  # remove 'stream.'
-                    } for sensor in d.query_sensors() for s in sensor.profiles
+                    } for s in pipeline_profile.get_streams()
                 ],
             }
-        # pipeline.stop()
+        pipeline.stop()
     return devices
 
 
