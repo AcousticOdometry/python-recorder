@@ -348,7 +348,7 @@ class RealSenseRecorder(Recorder):
             config.enable_record_to_file(
                 str(self.output_folder / f'rsdevice{i}.bag')
                 )
-            self.configs[i] = config
+            self.configs.append(config)
         self.pipelines = []
 
     def start(self):
