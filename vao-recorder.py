@@ -85,6 +85,8 @@ def wait(seconds: int = 4, label: str = 'Recording...', **kwargs):
 def typer_warn(message: str):
     return typer.secho(message, bg='black', fg='yellow')
 
+def yaml_dump(data: dict):
+    return yaml.dump(data, default_flow_style=True)
 
 # ------------------------------ Configuration ------------------------------ #
 
@@ -150,7 +152,7 @@ def show_microphones(verbose: bool = False):
     devices = Microphone.find()
     if not verbose:
         devices = {i: d['name'] for i, d in devices.items()}
-    typer.echo('Microphones:\n' + yaml.dump(devices))
+    typer.echo('Microphones:\n' + yaml_dump(devices))
 
 
 def find_realsense() -> dict:
@@ -193,7 +195,7 @@ def show_realsense(verbose: bool = False):
     devices = RealSense.find()
     if not verbose:
         devices = {i: d['name'] for i, d in devices.items()}
-    typer.echo('RealSense devices:\n' + yaml.dump(devices))
+    typer.echo('RealSense devices:\n' + yaml_dump(devices))
 
 
 # def find_cameras(max_index: int = 10) -> dict:
@@ -223,7 +225,7 @@ def show_realsense(verbose: bool = False):
 #             for k, v in camera.items() if k != 'cap'}
 #         for i, camera in Camera.find().items()
 #         }
-#     typer.echo('Real Sense devices:\n' + yaml.dump(devices))
+#     typer.echo('Real Sense devices:\n' + yaml_dump(devices))
 
 
 @app.command(help='Create a configuration `yaml` file.')
@@ -237,7 +239,7 @@ def config(
     for device in [Microphone, RealSense]:
         config[device.config_key] = device.choose_config()
     with open(output, 'w') as f:
-        f.write(yaml.dump(config))
+        f.write(yaml_dump(config))
     typer.echo(
         f"Configuration file written to {output}. Remember that it can be "
         "edited manually. Check the repository for an explained example file "
@@ -296,7 +298,7 @@ class AudioRecorder(Recorder):
         for i, (_id, mic) in enumerate(self.devices.items()):
             # Write configuration in a yaml file
             with open(self.output_folder / f'audio{i}.yaml', 'w') as f:
-                f.write(yaml.dump(mic))
+                f.write(yaml_dump(mic))
             # Create audio stream
             name = f"{_id} {mic.pop('name', '')}"
             try:
@@ -362,7 +364,7 @@ class RealSenseRecorder(Recorder):
         for i, (sn, cam) in enumerate(self.devices.items()):
             # Write configuration in a yaml file
             with open(self.output_folder / f'rsdevice{i}.yaml', 'w') as f:
-                f.write(yaml.dump(cam))
+                f.write(yaml_dump(cam))
             config = rs.config()
             config.enable_device(sn)
             config.enable_all_streams()
