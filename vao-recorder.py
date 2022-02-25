@@ -167,9 +167,9 @@ def find_realsense() -> dict:
             'streams': {
                 s.stream_index(): {
                     'name': s.stream_name(),
-                    'type': s.stream_type(),
+                    'type': str(s.stream_type()),
                     'framerate': s.fps(),
-                    'format': s.format(),
+                    'format': str(s.format()),
                     }
                 for s in pipeline_profile.get_streams()
                 },
