@@ -85,8 +85,9 @@ def wait(seconds: int = 4, label: str = 'Recording...', **kwargs):
 def typer_warn(message: str):
     return typer.secho(message, bg='black', fg='yellow')
 
-def yaml_dump(data: dict):
-    return yaml.dump(data, default_flow_style=True)
+def yaml_dump(data) -> str:
+    return yaml.dump(data)
+    # return yaml.dump(data, default_flow_style=True)
 
 # ------------------------------ Configuration ------------------------------ #
 
