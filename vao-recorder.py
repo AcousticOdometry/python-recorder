@@ -170,7 +170,6 @@ def find_realsense() -> dict:
                     'type': s.stream_type(),
                     'framerate': s.fps(),
                     'format': s.format(),
-                    'extrinsics': s.get_extrinsics_to(),
                     }
                 for s in pipeline_profile.get_streams()
                 },
