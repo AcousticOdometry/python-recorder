@@ -174,7 +174,7 @@ def find_realsense() -> dict:
                     s.as_motion_stream_profile().get_motion_intrinsics().data
             elif s.is_video_stream_profile():
                 intrinsics = s.as_video_stream_profile().get_intrinsics()
-                streams[name].update(intrinsics.__dict__)
+                streams[name].update(dict(intrinsics))
         devices[sn] = {
             'name': d.get_info(rs.camera_info.name),
             'streams': streams,
