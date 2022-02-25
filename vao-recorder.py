@@ -174,10 +174,10 @@ def find_realsense() -> dict:
                     s.as_motion_stream_profile().get_motion_intrinsics().data
             elif s.is_video_stream_profile():
                 intrinsics = s.as_video_stream_profile().get_intrinsics()
-                print(dir(intrinsics))
                 streams[name].update({
-                    'coeffs': intrinsics.coeffs,
-                })
+                    attr: getattr(intrinsics, attr)
+                    for attr in dir(intrinsics) if not attr.startswith('_')
+                    })
         devices[sn] = {
             'name': d.get_info(rs.camera_info.name),
             'streams': streams,
@@ -193,7 +193,6 @@ def show_realsense(verbose: bool = False):
     devices = RealSense.find()
     if not verbose:
         devices = {i: d['name'] for i, d in devices.items()}
-    print(devices)
     typer.echo('RealSense devices:\n' + yaml.dump(devices))
 
 
