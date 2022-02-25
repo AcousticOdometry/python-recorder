@@ -178,8 +178,14 @@ def find_realsense() -> dict:
             elif s.is_video_stream_profile():
                 intrinsics = s.as_video_stream_profile().get_intrinsics()
                 streams[name].update({
-                    attr: getattr(intrinsics, attr)
-                    for attr in dir(intrinsics) if not attr.startswith('_')
+                    'coeffs': intrinsics.coeffs,
+                    'model': str(intrinsics.model),
+                    'fx': intrinsics.fx,
+                    'fy': intrinsics.fy,
+                    'width': intrinsics.width,
+                    'height': intrinsics.height,
+                    'ppx': intrinsics.ppx,
+                    'ppy': intrinsics.ppy,
                     })
         devices[sn] = {
             'name': d.get_info(rs.camera_info.name),
