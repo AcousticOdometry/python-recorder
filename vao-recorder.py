@@ -358,7 +358,8 @@ class RealSenseRecorder(Recorder):
             self.pipelines.append(pipeline)
 
     def stop(self):
-        for pipeline in self.pipelines:
+        while self.pipelines:
+            pipeline = self.pipelines.pop()
             pipeline.stop()
 
 
