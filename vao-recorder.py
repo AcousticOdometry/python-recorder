@@ -226,6 +226,7 @@ def config(
 
 
 def get_config(path=DEFAULT_CONFIG_PATH) -> dict:
+    _config = None
     if path.exists():
         with open(path, 'r') as f:
             _config = yaml.safe_load(f)
