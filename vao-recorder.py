@@ -161,17 +161,22 @@ def find_realsense() -> dict:
         config.enable_device(sn)
         config.enable_all_streams()
         pipeline_profile = config.resolve(rs.pipeline_wrapper())
+        streams = {}
+        for s in pipeline_profile.get_streams():
+            name = s.stream_name()
+            streams[name] = {
+                'format': str(s.format())[7:],  # remove 'format.'
+                'framerate': s.fps(),
+                'type': str(s.stream_type())[7:],  # remove 'stream.'
+                }
+            if s.is_motion_stream_profile():
+                streams[name]['intrinsics'] = s.get_motion_intrinsics().data
+            elif s.is_video_stream_profile():
+                intrinsics = s.get_intrinsics()
+                streams[name].update(intrinsics.__dict__)
         devices[sn] = {
-            'name':
-                d.get_info(rs.camera_info.name),
-            'streams': [
-                {
-                    'format': str(s.format())[7:],  # remove 'format.'
-                    'framerate': s.fps(),
-                    'name': s.stream_name(),
-                    'type': str(s.stream_type())[7:],  # remove 'stream.'
-                    } for s in pipeline_profile.get_streams()
-                ],
+            'name': d.get_info(rs.camera_info.name),
+            'streams': streams,
             }
     return devices
 
