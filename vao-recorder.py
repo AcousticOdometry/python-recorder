@@ -154,12 +154,27 @@ def show_microphones(verbose: bool = False):
 
 
 def find_realsense() -> dict:
-    return {
-        d.get_info(rs.camera_info.serial_number): {
-            'name': d.get_info(rs.camera_info.name)
+    devices = {}
+    for d in rs.context().query_devices():
+        sn = d.get_info(rs.camera_info.serial_number)
+        config = rs.config()
+        config.enable_device(sn)
+        config.enable_all_streams()
+        pipeline_profile = config.resolve()
+        devices[sn] = {
+            'name': d.get_info(rs.camera_info.name),
+            'streams': {
+                s.stream_index(): {
+                    'name': s.stream_name(),
+                    'type': s.stream_type(),
+                    'framerate': s.fps(),
+                    'format': s.format(),
+                    'extrinsics': s.get_extrinsics_to(),
+                    }
+                for s in pipeline_profile.get_streams()
+                },
             }
-        for d in rs.context().query_devices()
-        }
+    return devices
 
 
 RealSense = Device(find_realsense, 'RealSense')
@@ -170,6 +185,7 @@ def show_realsense(verbose: bool = False):
     devices = RealSense.find()
     if not verbose:
         devices = {i: d['name'] for i, d in devices.items()}
+    print(devices)
     typer.echo('RealSense devices:\n' + yaml.dump(devices))
 
 
@@ -190,9 +206,7 @@ def show_realsense(verbose: bool = False):
 #         for i in range(max_index) if (cap := cv2.VideoCapture(i)).isOpened()
 #         }
 
-
 # Camera = Device(find_cameras, 'camera')
-
 
 # @app.command(help='Display the available cameras')
 # def show_cameras():
@@ -348,6 +362,7 @@ class RealSenseRecorder(Recorder):
             config.enable_record_to_file(
                 str(self.output_folder / f'rsdevice{i}.bag')
                 )
+            config.resolve()
             self.configs.append(config)
         self.pipelines = []
 
