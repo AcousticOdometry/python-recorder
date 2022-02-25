@@ -206,6 +206,7 @@ RealSense.config_map = {
     **RealSense.config_map,
     }
 
+
 @app.command(help='Display the available RealSense devices')
 def show_realsense(verbose: bool = False):
     devices = RealSense.find()
@@ -384,8 +385,8 @@ class RealSenseRecorder(Recorder):
             config.enable_device(sn)
             for stream in streams:
                 parameters = {
-                    'stream_type': rs.stream.get(stream['type']),
-                    'format': rs.format.get(stream['format']),
+                    'stream_type': getattr(rs.stream, stream['type']),
+                    'format': getattr(rs.format, stream['format']),
                     'framerate': stream['framerate'],
                     }
                 if 'width' in stream:
