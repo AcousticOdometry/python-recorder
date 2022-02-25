@@ -160,8 +160,7 @@ def find_realsense() -> dict:
         config = rs.config()
         config.enable_device(sn)
         config.enable_all_streams()
-        pipeline = rs.pipeline()
-        pipeline_profile = pipeline.start(config)
+        pipeline_profile = config.resolve(rs.pipeline_wrapper())
         devices[sn] = {
             'name':
                 d.get_info(rs.camera_info.name),
@@ -174,7 +173,6 @@ def find_realsense() -> dict:
                     } for s in pipeline_profile.get_streams()
                 ],
             }
-        pipeline.stop()
     return devices
 
 
