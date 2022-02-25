@@ -201,7 +201,10 @@ def find_realsense() -> dict:
 
 
 RealSense = Device(find_realsense, 'RealSense')
-
+RealSense.config_map = {
+    'streams': 'streams',
+    **RealSense.config_map,
+    }
 
 @app.command(help='Display the available RealSense devices')
 def show_realsense(verbose: bool = False):
