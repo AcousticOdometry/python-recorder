@@ -166,7 +166,7 @@ def find_realsense() -> dict:
             'name': d.get_info(rs.camera_info.name),
             'streams': {
                 s.stream_index(): {
-                    'format': str(s.format()).lstrip('format.'),
+                    'format': str(s.format()),
                     'framerate': s.fps(),
                     'name': s.stream_name(),
                     'type': str(s.stream_type()).lstrip('stream.'),
