@@ -85,9 +85,14 @@ def wait(seconds: int = 4, label: str = 'Recording...', **kwargs):
 def typer_warn(message: str):
     return typer.secho(message, bg='black', fg='yellow')
 
-def yaml_dump(data) -> str:
-    return yaml.dump(data)
-    # return yaml.dump(data, default_flow_style=True)
+
+def yaml_dump(data, to_file: Path = None) -> str:
+    content = yaml.dump(data)
+    if to_file:
+        with open(to_file, 'w') as f:
+            f.write(content)
+    return content
+
 
 # ------------------------------ Configuration ------------------------------ #
 
@@ -179,7 +184,8 @@ def find_realsense() -> dict:
                 intrinsics = s.as_video_stream_profile().get_intrinsics()
                 streams[name].update({
                     'coeffs': intrinsics.coeffs,
-                    'model': str(intrinsics.model),
+                    'model': str(intrinsics.model)
+                             [11:],  # remove 'distortion.'
                     'fx': intrinsics.fx,
                     'fy': intrinsics.fy,
                     'width': intrinsics.width,
@@ -245,8 +251,7 @@ def config(
     config = {}
     for device in [Microphone, RealSense]:
         config[device.config_key] = device.choose_config()
-    with open(output, 'w') as f:
-        f.write(yaml_dump(config))
+    yaml_dump(config, to_file=output)
     typer.echo(
         f"Configuration file written to {output}. Remember that it can be "
         "edited manually. Check the repository for an explained example file "
@@ -304,8 +309,7 @@ class AudioRecorder(Recorder):
         super().__init__(*args, **kwargs)
         for i, (_id, mic) in enumerate(self.devices.items()):
             # Write configuration in a yaml file
-            with open(self.output_folder / f'audio{i}.yaml', 'w') as f:
-                f.write(yaml_dump(mic))
+            yaml_dump(mic, to_file=self.output_folder / f'audio{i}.yaml')
             # Create audio stream
             name = f"{_id} {mic.pop('name', '')}"
             try:
@@ -368,13 +372,23 @@ class RealSenseRecorder(Recorder):
         super().__init__(*args, **kwargs)
         self.configs = []
         # Get RealSense camera streams
-        for i, (sn, cam) in enumerate(self.devices.items()):
+        for i, (sn, device) in enumerate(self.devices.items()):
             # Write configuration in a yaml file
-            with open(self.output_folder / f'rsdevice{i}.yaml', 'w') as f:
-                f.write(yaml_dump(cam))
+            if not (streams := device.get('streams', [])):
+                continue
+            yaml_dump(device, to_file=self.output_folder / f'rsdevice{i}.yaml')
             config = rs.config()
             config.enable_device(sn)
-            config.enable_all_streams()
+            for stream in streams:
+                parameters = {
+                    'stream_type': rs.stream.get(stream['type']),
+                    'format': rs.format.get(stream['format']),
+                    'framerate': stream['framerate'],
+                    }
+                if 'width' in stream:
+                    parameters['width'] = stream['width']
+                    parameters['height'] = stream['height']
+                config.enable_stream(**parameters)
             config.enable_record_to_file(
                 str(self.output_folder / f'rsdevice{i}.bag')
                 )
