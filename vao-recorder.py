@@ -21,7 +21,7 @@ import numpy as np
 import typer
 import yaml
 import wave
-import cv2
+# import cv2
 
 from typing import Optional, Tuple, Callable
 from abc import ABC, abstractmethod
@@ -173,36 +173,36 @@ def show_realsense(verbose: bool = False):
     typer.echo('RealSense devices:\n' + yaml.dump(devices))
 
 
-def find_cameras(max_index: int = 10) -> dict:
-    return {
-        i: {
-            'cap':
-                cap,
-            'name':
-                cv2.videoio_registry.getBackendName(
-                    int(cap.get(cv2.CAP_PROP_BACKEND))
-                    ),
-            'width':
-                int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-            'height':
-                int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-            }
-        for i in range(max_index) if (cap := cv2.VideoCapture(i)).isOpened()
-        }
+# def find_cameras(max_index: int = 10) -> dict:
+#     return {
+#         i: {
+#             'cap':
+#                 cap,
+#             'name':
+#                 cv2.videoio_registry.getBackendName(
+#                     int(cap.get(cv2.CAP_PROP_BACKEND))
+#                     ),
+#             'width':
+#                 int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+#             'height':
+#                 int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+#             }
+#         for i in range(max_index) if (cap := cv2.VideoCapture(i)).isOpened()
+#         }
 
 
-Camera = Device(find_cameras, 'camera')
+# Camera = Device(find_cameras, 'camera')
 
 
-@app.command(help='Display the available cameras')
-def show_cameras():
-    # Remove the `cap` attribute from the camera devices
-    devices = {
-        i: {k: v
-            for k, v in camera.items() if k != 'cap'}
-        for i, camera in Camera.find().items()
-        }
-    typer.echo('Real Sense devices:\n' + yaml.dump(devices))
+# @app.command(help='Display the available cameras')
+# def show_cameras():
+#     # Remove the `cap` attribute from the camera devices
+#     devices = {
+#         i: {k: v
+#             for k, v in camera.items() if k != 'cap'}
+#         for i, camera in Camera.find().items()
+#         }
+#     typer.echo('Real Sense devices:\n' + yaml.dump(devices))
 
 
 @app.command(help='Create a configuration `yaml` file.')
@@ -362,22 +362,22 @@ class RealSenseRecorder(Recorder):
             pipeline.stop()
 
 
-class VideoRecorder(Recorder):
-    device = Camera
+# class VideoRecorder(Recorder):
+#     device = Camera
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.devices:
-            raise NotImplementedError(
-                'Video recording not implemented yet. Remove cameras from the '
-                'configuration. Use microphones or RealSense devices instead.'
-                )
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         if self.devices:
+#             raise NotImplementedError(
+#                 'Video recording not implemented yet. Remove cameras from the '
+#                 'configuration. Use microphones or RealSense devices instead.'
+#                 )
 
-    def start(self):
-        pass
+#     def start(self):
+#         pass
 
-    def stop(self):
-        pass
+#     def stop(self):
+#         pass
 
 
 @app.command(help='Record visual and acoustic data.')
