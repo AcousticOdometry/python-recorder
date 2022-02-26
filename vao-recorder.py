@@ -449,6 +449,7 @@ def record(
     # Cleanup the recording
     for r in recorders:
         r.stop()
+    typer.echo(f"Recording finished. Output: {output_folder}")
     return output_folder
 
 
@@ -496,6 +497,7 @@ def test_realsense(
     realsense.start()
     wait(5)
     realsense.stop()
+    typer.echo(f"Test output: {output_folder}")
 
 
 if __name__ == '__main__':
