@@ -360,6 +360,7 @@ class AudioRecorder(Recorder):
         for stream in self.streams:
             stream.start()
         # Write start timestamp
+        # ! Can this cause delay in starting the video recording?
         with open(self.output_folder / 'audio_start.txt', 'w') as f:
             f.write(str(datetime.now().timestamp()))
 
@@ -437,7 +438,9 @@ def record(
     config = get_config(config_path)
     output_folder.mkdir(exist_ok=True, parents=True)
     # Setup recording
-    recorders = [r(config, output_folder) for r in Recorder.__subclasses__()]
+    recorders = [
+        r(config, output_folder) for r in (RealSenseRecorder, AudioRecorder)
+        ]
     # Start the recording
     for r in recorders:
         r.start()
