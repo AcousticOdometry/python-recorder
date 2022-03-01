@@ -87,7 +87,7 @@ def typer_warn(message: str):
 
 
 def yaml_dump(data, to_file: Path = None) -> str:
-    content = yaml.dump(data)
+    content = yaml.dump(data, allow_unicode=True)
     if to_file:
         with open(to_file, 'w') as f:
             f.write(content)
