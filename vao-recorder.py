@@ -88,9 +88,14 @@ def typer_warn(message: str):
 
 def yaml_dump(data, to_file: Path = None) -> str:
     if to_file:
-        with open(to_file, 'w') as f:
+        with open(to_file, 'w', encoding="utf-8") as f:
             return yaml.dump(data, stream=f, allow_unicode=True)
     return yaml.dump(data, allow_unicode=True)
+
+
+def yaml_load(from_file: Path) -> dict:
+    with open(from_file, 'r', encoding="utf-8") as f:
+        return yaml.safe_load(f)
 
 
 # ------------------------------ Configuration ------------------------------ #
@@ -266,8 +271,7 @@ def config(
 def get_config(path=DEFAULT_CONFIG_PATH) -> dict:
     _config = None
     if path.exists():
-        with open(path, 'r') as f:
-            _config = yaml.safe_load(f)
+        _config = yaml_load(path)
     if not _config:
         typer_warn(f"No configuration found in {path}. Generate one.")
         _config = config(path)
