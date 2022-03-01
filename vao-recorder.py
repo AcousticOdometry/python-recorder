@@ -268,7 +268,7 @@ def get_config(path=DEFAULT_CONFIG_PATH) -> dict:
     _config = None
     if path.exists():
         with open(path, 'r') as f:
-            _config = yaml.safe_load(f)
+            _config = yaml.safe_load(f, allow_unicode=True)
     if not _config:
         typer_warn(f"No configuration found in {path}. Generate one.")
         _config = config(path)
