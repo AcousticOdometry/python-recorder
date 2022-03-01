@@ -478,7 +478,7 @@ def test_microphones(
     # Play audio
     for _file in output_folder.glob('audio*.wav'):
         typer.echo(f'Playing {_file}')
-        with open(_file.with_suffix('.yaml')) as f:
+        with open(_file.with_suffix('.yaml'), encoding='utf-8') as f:
             typer.echo(f.read())
         data, fs = wave_read(_file)
         sd.play(data, samplerate=fs, blocking=True)
