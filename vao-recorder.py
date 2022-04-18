@@ -35,218 +35,17 @@ app = typer.Typer(
     help=__doc__,
     )
 
-DEFAULT_CONFIG_PATH = Path(__file__).parent / 'vao-recorder.yaml'
-DEFAULT_CONFIG_PATH_OPTION = typer.Option(
-    DEFAULT_CONFIG_PATH,
-    help="Path to a `yaml` config file. Run `config` command to generate one."
-    )
-DEFAULT_OUTPUT_FOLDER = Path(__file__).parent / 'output' / \
-    datetime.now().strftime('VAO_%Y-%m-%d_%H-%M-%S')
-DEFAULT_OUTPUT_FOLDER_OPTION = typer.Option(
-    DEFAULT_OUTPUT_FOLDER,
-    help="""
-    Path to a folder where the recorded data and the recording configuration
-    will be stored."""
-    )
-
 # -------------------------------- Utilities -------------------------------- #
 
-
-def wave_read(filename: Path) -> Tuple[np.ndarray, int]:
-    # Utility function that reads the whole `wav` file content into a numpy
-    with wave.open(str(filename), 'rb') as f:
-        return (
-            np.reshape(
-                np.frombuffer(
-                    f.readframes(f.getnframes()),
-                    dtype=f'int{f.getsampwidth()*8}'
-                    ), (-1, f.getnchannels())
-                ),
-            f.getframerate(),
-            )
-
-
-def choose(message: str, choices: list):
-    # Utility function that asks the user to configure the devices
-    return prompt({
-        'type': 'list',
-        'name': 'choice',
-        'message': message,
-        'choices': choices,
-        })['choice']
-
-
-def wait(seconds: int = 4, label: str = 'Recording...', **kwargs):
-    with typer.progressbar(range(seconds * 10), label=label, **kwargs) as p:
-        for _ in p:
-            sd.sleep(100)
-
-
-def typer_warn(message: str):
-    return typer.secho(message, bg='black', fg='yellow')
-
-
-def yaml_dump(data, to_file: Path = None) -> str:
-    if to_file:
-        with open(to_file, 'w', encoding="utf-8") as f:
-            return yaml.dump(data, stream=f, allow_unicode=True)
-    return yaml.dump(data, allow_unicode=True)
-
-
-def yaml_load(from_file: Path) -> dict:
-    with open(from_file, 'r', encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
 
 # ------------------------------ Configuration ------------------------------ #
 
 
-class Device:
-
-    def __init__(self, find: Callable, name: str) -> None:
-        self.find = find
-        self.name = name
-
-    @property
-    def config_key(self) -> str:
-        return self.name.lower()
-
-    # Define which attributes from the device are passed to the `config`
-    # dictionary
-    config_map = {
-        # (key in `config`): (key in `device` or value getter)
-        'name': 'name',
-        }
-
-    def choose_config(self) -> dict:
-        choices = {}
-        devices = self.find()
-        if not devices:
-            typer_warn(f"Could not find {self.name} devices")
-            return choices
-        while typer.confirm(
-            f"Add {'another' if choices else 'a'} {self.name} device?"
-            ):
-            _id = choose(
-                message=f"Select the {self.name} to add to the configuration:",
-                choices=[{
-                    'name': f"{_id} {d['name']}",
-                    'value': _id
-                    } for _id, d in devices.items()]
-                )
-            choices[_id] = {
-                k: devices[_id][v] if isinstance(v, str) else v(devices[_id])
-                for k, v in self.config_map.items()
-                }
-        return choices
 
 
-def find_microphones() -> dict:
-    return {
-        i: d
-        for i, d in enumerate(sd.query_devices())
-        if d['max_input_channels'] > 0
-        }
 
 
-Microphone = Device(find_microphones, 'microphone')
-Microphone.config_map = {
-    'samplerate': lambda device: int(device['default_samplerate']),
-    'channels': lambda device: int(device['max_input_channels']),
-    **Microphone.config_map,
-    }
-
-
-@app.command(help='Display the available microphones')
-def show_microphones(verbose: bool = False):
-    devices = Microphone.find()
-    if not verbose:
-        devices = {i: d['name'] for i, d in devices.items()}
-    typer.echo('Microphones:\n' + yaml_dump(devices))
-
-
-def find_realsense() -> dict:
-    devices = {}
-    for d in rs.context().query_devices():
-        sn = d.get_info(rs.camera_info.serial_number)
-        config = rs.config()
-        config.enable_device(sn)
-        config.enable_all_streams()
-        pipeline_profile = config.resolve(rs.pipeline_wrapper(rs.pipeline()))
-        streams = {}
-        for s in pipeline_profile.get_streams():
-            name = s.stream_name()
-            streams[name] = {
-                'format': str(s.format())[7:],  # remove 'format.'
-                'framerate': s.fps(),
-                'type': str(s.stream_type())[7:],  # remove 'stream.'
-                }
-            if s.is_motion_stream_profile():
-                streams[name]['intrinsics'] = \
-                    s.as_motion_stream_profile().get_motion_intrinsics().data
-            elif s.is_video_stream_profile():
-                intrinsics = s.as_video_stream_profile().get_intrinsics()
-                streams[name].update({
-                    'coeffs': intrinsics.coeffs,
-                    'model': str(intrinsics.model)
-                             [11:],  # remove 'distortion.'
-                    'fx': intrinsics.fx,
-                    'fy': intrinsics.fy,
-                    'width': intrinsics.width,
-                    'height': intrinsics.height,
-                    'ppx': intrinsics.ppx,
-                    'ppy': intrinsics.ppy,
-                    })
-        devices[sn] = {
-            'name': d.get_info(rs.camera_info.name),
-            'streams': streams,
-            }
-    return devices
-
-
-RealSense = Device(find_realsense, 'RealSense')
-RealSense.config_map = {
-    'streams': 'streams',
-    **RealSense.config_map,
-    }
-
-
-@app.command(help='Display the available RealSense devices')
-def show_realsense(verbose: bool = False):
-    devices = RealSense.find()
-    if not verbose:
-        devices = {i: d['name'] for i, d in devices.items()}
-    typer.echo('RealSense devices:\n' + yaml_dump(devices))
-
-
-# def find_cameras(max_index: int = 10) -> dict:
-#     return {
-#         i: {
-#             'cap':
-#                 cap,
-#             'name':
-#                 cv2.videoio_registry.getBackendName(
-#                     int(cap.get(cv2.CAP_PROP_BACKEND))
-#                     ),
-#             'width':
-#                 int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-#             'height':
-#                 int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-#             }
-#         for i in range(max_index) if (cap := cv2.VideoCapture(i)).isOpened()
-#         }
-
-# Camera = Device(find_cameras, 'camera')
-
-# @app.command(help='Display the available cameras')
-# def show_cameras():
-#     # Remove the `cap` attribute from the camera devices
-#     devices = {
-#         i: {k: v
-#             for k, v in camera.items() if k != 'cap'}
-#         for i, camera in Camera.find().items()
-#         }
-#     typer.echo('Real Sense devices:\n' + yaml_dump(devices))
 
 
 @app.command(help='Create a configuration `yaml` file.')
@@ -444,6 +243,7 @@ def record(
     recorders = [
         r(config, output_folder) for r in (RealSenseRecorder, AudioRecorder)
         ]
+    # Todo pause
     # Start the recording
     for r in recorders:
         r.start()
