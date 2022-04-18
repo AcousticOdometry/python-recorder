@@ -1,36 +1,33 @@
 from recorder.device import Device
+from recorder.io import wave_read
 
+import wave
 import sounddevice as sd
 
 from pathlib import Path
+from inspect import signature
 
 
 class Microphone(Device):
+    stream_keyword_arguments = [
+        str(s) for s in signature(sd.RawInputStream).parameters
+        ]
 
-    def __init__(
-            self, *args, index: int, samplerate: int, channels: int, **kwargs
-        ):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.index = index
-        self.samplerate = samplerate
-        self.channels = channels
+        assert 'index' in self.config
+        assert 'samplerate' in self.config
+        assert 'channels' in self.config
+        # Signature from sounddevice.RawInputStream
+        stream_kwargs = {
+            k: self.config[k]
+            for k in self.config.keys() if k in self.stream_keyword_arguments
+            }
         self.stream = self._get_stream(
-            device=index,
+            device=self.config['index'],
             output_path=self.output_file.with_suffix('.wav'),
+            **stream_kwargs
             )
-
-    @classmethod
-    def find(cls) -> dict:
-        devices = {}
-        for idx, d in enumerate(sd.query_devices()):
-            if d['max_input_channels'] > 0:
-                devices[idx] = {
-                    'samplerate': int(d['default_samplerate']),
-                    'channels': int(d['max_input_channels']),
-                    'name': d['name'],
-                    'index': idx,
-                    }
-        return devices
 
     @staticmethod
     def _get_stream(
@@ -56,12 +53,31 @@ class Microphone(Device):
             **stream_kwargs
             )
 
-    def start(self):
+    @classmethod
+    def find(cls) -> dict:
+        devices = {}
+        for idx, d in enumerate(sd.query_devices()):
+            if d['max_input_channels'] > 0:
+                devices[idx] = {
+                    'name': d['name'],
+                    'index': idx,
+                    'samplerate': int(d['default_samplerate']),
+                    'channels': int(d['max_input_channels']),
+                    }
+        return devices
+
+    def _start(self):
         self.stream.start()
 
-    def stop(self):
+    def _stop(self):
         self.stream.stop()
         self.stream.close()
-        # Write start timestamp
-        # with open(self.output_folder / 'audio_start.txt', 'w') as f:
-        #     f.write(str(datetime.now().timestamp()))
+
+    @classmethod
+    def show_results(cls, from_folder):
+        for _file in from_folder.glob(f'{repr(cls)}*.wav'):
+            print(f'Playing {_file}')
+            with open(_file.with_suffix('.yaml'), encoding='utf-8') as f:
+                print(f.read())
+            data, fs = wave_read(_file)
+            sd.play(data, samplerate=fs, blocking=True)

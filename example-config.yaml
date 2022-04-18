@@ -1,11 +1,13 @@
 microphone:
   # A microphone configuration should match the call signature of
-  # `sounddevice.InputStream` as it will be used on the call, except for two
-  # optional parameters: `name` and `samplewidth`
+  # `sounddevice.InputStream` as it will be used on the call, except for three
+  # additional parameters: `name`, `index` and `samplewidth`
   # https://python-sounddevice.readthedocs.io/en/0.4.4/api/streams.html#sounddevice.InputStream
-  17: # device_id
+
+  0: # Device index
     name: Realtek HD Audio Mic input # Optional, human-readable device_id
+    index: 17 # device_id
     channels: 2
     samplerate: 44100.0
     samplewidth: 2 # Sample width in bytes when stored in the `wav` file
-camera: {}
+realsense: {}

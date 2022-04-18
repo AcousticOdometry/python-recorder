@@ -5,10 +5,27 @@ import pyrealsense2 as rs
 
 class RealSense(Device):
 
-    def __init__(self, *args, streams: dict, serial_number: str, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.streams = streams
-        self.serial_number = serial_number
+        if not (streams := self.config.get('streams', [])):
+            raise AttributeError('No `streams` found in device')
+        assert 'serial_number' in self.config
+        self.rsconfig = rs.config()
+        self.rsconfig.enable_device(sn)
+        for stream in streams.values():
+            parameters = {
+                'stream_type': getattr(rs.stream, stream['type']),
+                'format': getattr(rs.format, stream['format']),
+                'framerate': stream['framerate'],
+                }
+            if 'width' in stream:
+                parameters['width'] = stream['width']
+                parameters['height'] = stream['height']
+            self.rsconfig.enable_stream(**parameters)
+        self.rsconfig.enable_record_to_file(
+            str(self.output_file.with_suffix('.bag'))
+            )
+        self.pipeline = rs.pipeline()
 
     @classmethod
     def find(cls) -> dict:
@@ -52,9 +69,15 @@ class RealSense(Device):
                 }
         return devices
 
+    def _start(self):
+        self.pipeline.start(self.rsconfig)
+    
+    def _stop(self):
+        self.pipeline.stop()
 
-# RealSense = Device(find_realsense, 'RealSense')
-# RealSense.config_map = {
-#     'streams': 'streams',
-#     **RealSense.config_map,
-#     }
+    @classmethod
+    def show_results(cls, from_folder):
+        for _file in from_folder.glob(f'{repr(cls)}*.bag'):
+            print(f'{_file}: {_file.stat().st_size} bytes')
+            with open(_file.with_suffix('.yaml'), encoding='utf-8') as f:
+                print(f.read())

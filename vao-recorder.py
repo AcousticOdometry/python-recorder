@@ -1,33 +1,13 @@
-"""
-Record visual and acoustic data from the connected devices. It allows
-interaction with microphones, cameras and RealSense devices.
+from recorder.config import DEFAULT_CONFIG_PATH, DEFAULT_OUTPUT_FOLDER
+from recorder.device import Device, DEVICE_CLASSES
+from recorder.io import yaml_dump
+from recorder import Recorder, Config
 
-Workflow: Configure the devices to be used. One can always modify the
-configuration manually in the generated `yaml` file.
-
->>> python vao-recorder.py config
-
-Test that the chosen audio devices are working
-
->>> python vao-recorder.py test-microphones
-
-Record an experiment with the chosen devices
-
->>> python vao-recorder.py record
-"""
-import pyrealsense2 as rs
-import sounddevice as sd
-import numpy as np
 import typer
-import yaml
-import wave
-# import cv2
 
-from typing import Optional, Tuple, Callable
-from abc import ABC, abstractmethod
-from PyInquirer import prompt
-from datetime import datetime
 from pathlib import Path
+from typing import Optional
+from PyInquirer import prompt
 
 # Command line application
 app = typer.Typer(
@@ -35,272 +15,174 @@ app = typer.Typer(
     help=__doc__,
     )
 
-# -------------------------------- Utilities -------------------------------- #
+DEFAULT_OUTPUT_FOLDER_OPTION = typer.Option(
+    DEFAULT_OUTPUT_FOLDER,
+    help="""
+    Path to a folder where the recorded data and the recording configuration
+    will be stored."""
+    )
+DEFAULT_CONFIG_PATH_OPTION = typer.Option(
+    DEFAULT_CONFIG_PATH,
+    help="Path to a `yaml` config file. Run `config` command to generate one."
+    )
+
+DEVICE_CLASS_ARGUMENT = typer.Argument(
+    None,
+    metavar='DEVICE_CLASS',
+    help=(
+        "Case independent name of the device class to use. Available options: "
+        f"{[d for d in DEVICE_CLASSES.keys()]}."
+        )
+    )
+DEVICE_ID_ARGUMENT = typer.Argument(
+    None,
+    metavar='DEVICE_ID',
+    help=(
+        "Numerical id of the device to use. Use the show command to see the available devices for each device class."
+        )
+    )
+VERBOSE_OPTION = typer.Option(False, "--verbose", "-v", help="Verbose output.")
 
 
-
-# ------------------------------ Configuration ------------------------------ #
-
-
+def typer_warn(message: str):
+    return typer.secho(message, bg='black', fg='yellow')
 
 
+def choose(message: str, choices: list):
+    # Utility function that asks the user to configure the devices
+    return prompt({
+        'type': 'list',
+        'name': 'choice',
+        'message': message,
+        'choices': choices,
+        })['choice']
 
 
+def get_device_class(name: str):
+    try:
+        return DEVICE_CLASSES[name.lower()]
+    except KeyError:
+        raise RuntimeError(
+            f'Invalid device class `{name}`. Available options: '
+            f'{list(DEVICE_CLASSES.keys())}'
+            )
+
+
+@app.command(help='Display the available devices')
+def show(
+        device_class: Optional[str] = DEVICE_CLASS_ARGUMENT,
+        verbose: bool = VERBOSE_OPTION
+    ):
+    if device_class:
+        device_classes = [get_device_class(device_class)]
+    else:
+        device_classes = DEVICE_CLASSES.values()
+    for cls in device_classes:
+        devices = cls.find()
+        if devices:
+            if not verbose:
+                devices = {i: d['name'] for i, d in devices.items()}
+            typer.echo(f'{cls}:\n' + yaml_dump(devices))
+        else:
+            typer_warn(f"Could not find {cls} devices")
+
+
+def config_device_class(device: Device) -> dict:
+    choices = {}
+    index = 0
+    devices = device.find()
+    if not devices:
+        typer_warn(f"Could not find {device} devices")
+        return choices
+    while typer.confirm(
+        f"Add {'another' if choices else 'a'} {device} device?"
+        ):
+        _id = choose(
+            message=f"Select the {device} to add to the configuration:",
+            choices=[{
+                'name': f"{_id} {d['name']}",
+                'value': _id
+                } for _id, d in devices.items()]
+            )
+        choices[index] = devices[_id]
+        index += 1
+    return choices
 
 
 @app.command(help='Create a configuration `yaml` file.')
-def config(
-        output: Optional[Path] = typer.Option(
-            DEFAULT_CONFIG_PATH,
-            help="Path to where the configuration yaml file should be written."
-            )
-    ) -> dict:
+def config(output: Path = DEFAULT_CONFIG_PATH_OPTION) -> dict:
     config = {}
-    for device in [Microphone, RealSense]:
-        config[device.config_key] = device.choose_config()
+    for name, device_class in DEVICE_CLASSES.items():
+        device_config = config_device_class(device_class)
+        if device_config:
+            config[name] = device_config
     yaml_dump(config, to_file=output)
     typer.echo(
-        f"Configuration file written to {output}. Remember that it can be "
-        "edited manually. Check the repository for an explained example file "
+        f"Configuration file written to {output}, it can be edited manually. "
+        "Check the repository for an explained example file "
         "https://github.com/AcousticOdometry/VAO-recorder/blob/main/example-config.yaml"
         )
     return config
 
 
-def get_config(path=DEFAULT_CONFIG_PATH) -> dict:
-    _config = None
-    if path.exists():
-        _config = yaml_load(path)
-    if not _config:
+def get_config(path: Path = DEFAULT_CONFIG_PATH) -> dict:
+    try:
+        return Config.from_yaml(path)
+    except AttributeError:
         typer_warn(f"No configuration found in {path}. Generate one.")
-        _config = config(path)
-    return _config
+        return Config.from_yaml(path)
 
 
-# -------------------------------- Recording -------------------------------- #
-
-
-class Recorder(ABC):
-
-    def __init__(
-            self,
-            config: dict,  # Configuration dictionary
-            output_folder: Path,  # Folder where data should be written
-        ):
-        self.output_folder = output_folder
-        self.devices = config.get(self.device.config_key)
-
-    @property
-    @abstractmethod
-    def device(self) -> Device:
-        # `Device` instance used to get the configuration
-        pass
-
-    @abstractmethod
-    def start(self):
-        pass
-
-    @abstractmethod
-    def stop(self):
-        pass
-
-    def __del__(self):
-        self.stop()
-
-
-class AudioRecorder(Recorder):
-    device = Microphone
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for i, (_id, mic) in enumerate(self.devices.items()):
-            # Write configuration in a yaml file
-            yaml_dump(mic, to_file=self.output_folder / f'audio{i}.yaml')
-            # Create audio stream
-            name = f"{_id} {mic.pop('name', '')}"
-            try:
-                self.devices[_id]['stream'] = self._get_stream(
-                    device_id=_id,
-                    output_path=self.output_folder / f'audio{i}.wav',
-                    **mic
-                    )
-            except Exception as e:
-                raise RuntimeError(
-                    f'Failed to open microphone `{name}`, review its '
-                    f'configuration {mic}\nError: {e}'
-                    )
-
-    @staticmethod
-    def _get_stream(
-        device_id: int,  # Device identifier
-        output_path: Path,  # Path to where the audio file should be written
-        samplewidth: int = 2,  # Sample width in bytes
-        samplerate: int = None,  # Sample rate
-        channels: int = None,  # Number of channels
-        **stream_kwargs,  # Additional keyword arguments for sd.RawInputStream
-        # https://python-sounddevice.readthedocs.io/en/0.4.4/api/streams.html#sounddevice.InputStream
-        ) -> sd.InputStream:
-        f = wave.open(str(output_path), 'wb')
-        f.setnchannels(int(channels))
-        f.setframerate(int(samplerate))
-        f.setsampwidth(samplewidth)
-        return sd.RawInputStream(
-            device=device_id,
-            dtype=f'int{samplewidth*8}',
-            samplerate=samplerate,
-            channels=channels,
-            callback=lambda data, N, t, status: f.writeframesraw(data),
-            finished_callback=f.close,
-            **stream_kwargs
-            )
-
-    @property
-    def streams(self):
-        return [m['stream'] for m in self.devices.values() if 'stream' in m]
-
-    def start(self):
-        for stream in self.streams:
-            stream.start()
-        # Write start timestamp
-        # ! Can this cause delay in starting the video recording?
-        with open(self.output_folder / 'audio_start.txt', 'w') as f:
-            f.write(str(datetime.now().timestamp()))
-
-    def stop(self):
-        for stream in self.streams:
-            stream.stop()
-            stream.close()
-
-
-class RealSenseRecorder(Recorder):
-    device = RealSense
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.configs = []
-        # Get RealSense camera streams
-        for i, (sn, device) in enumerate(self.devices.items()):
-            # Write configuration in a yaml file
-            if not (streams := device.get('streams', [])):
-                continue
-            yaml_dump(device, to_file=self.output_folder / f'rsdevice{i}.yaml')
-            config = rs.config()
-            config.enable_device(sn)
-            for stream in streams.values():
-                parameters = {
-                    'stream_type': getattr(rs.stream, stream['type']),
-                    'format': getattr(rs.format, stream['format']),
-                    'framerate': stream['framerate'],
-                    }
-                if 'width' in stream:
-                    parameters['width'] = stream['width']
-                    parameters['height'] = stream['height']
-                config.enable_stream(**parameters)
-            config.enable_record_to_file(
-                str(self.output_folder / f'rsdevice{i}.bag')
-                )
-            self.configs.append(config)
-        self.pipelines = []
-
-    def start(self):
-        for config in self.configs:
-            pipeline = rs.pipeline()
-            pipeline.start(config)
-            self.pipelines.append(pipeline)
-
-    def stop(self):
-        while self.pipelines:
-            pipeline = self.pipelines.pop()
-            pipeline.stop()
-
-
-# class VideoRecorder(Recorder):
-#     device = Camera
-
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         if self.devices:
-#             raise NotImplementedError(
-#                 'Video recording not implemented yet. Remove cameras from the '
-#                 'configuration. Use microphones or RealSense devices instead.'
-#                 )
-
-#     def start(self):
-#         pass
-
-#     def stop(self):
-#         pass
-
-
-@app.command(help='Record visual and acoustic data.')
+@app.command(help='Record data from the configured devices')
 def record(
+    seconds: int = typer.Argument(None, help="Number of seconds to record"),
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
-    ) -> Path:
+    ):
     config = get_config(config_path)
-    output_folder.mkdir(exist_ok=True, parents=True)
-    # Setup recording
-    recorders = [
-        r(config, output_folder) for r in (RealSenseRecorder, AudioRecorder)
-        ]
-    # Todo pause
-    # Start the recording
-    for r in recorders:
-        r.start()
-    # Wait for user input
-    input('Press `Enter` to stop recording.')
-    # Cleanup the recording
-    for r in recorders:
-        r.stop()
-    typer.echo(f"Recording finished. Output: {output_folder}")
-    return output_folder
+    recorder = Recorder(config, output_folder)
+    if typer.confirm('Recording ready, start?', default=True):
+        output_folder = recorder(seconds=seconds)
+        typer.echo(f'Recording finished, data saved to {output_folder}')
 
 
-# --------------------------------- Testing --------------------------------- #
-
-
-@app.command(
-    help="""
-    Record 5 seconds from the configured microphones and play back the audio of
-    each recording."""
-    )
-def test_microphones(
+@app.command(help='Test device recording')
+def test(
+    device_class: Optional[str] = DEVICE_CLASS_ARGUMENT,
+    device_id: Optional[int] = DEVICE_ID_ARGUMENT,
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
-    ) -> Path:
-    config = get_config(config_path)
-    output_folder.mkdir(exist_ok=True, parents=True)
-    # Record 5 seconds of audio
-    audio = AudioRecorder(config, output_folder)
-    audio.start()
-    wait(5)
-    audio.stop()
-    # Play audio
-    for _file in output_folder.glob('audio*.wav'):
-        typer.echo(f'Playing {_file}')
-        with open(_file.with_suffix('.yaml'), encoding='utf-8') as f:
-            typer.echo(f.read())
-        data, fs = wave_read(_file)
-        sd.play(data, samplerate=fs, blocking=True)
-
-
-@app.command(
-    help="""
-    Record 5 seconds from the configured cameras. The generated `.bag` files
-    need to be manually checked using `ROS` or the RealSense SDK."""
-    )
-def test_realsense(
-    config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
-    output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
-    ) -> Path:
-    config = get_config(config_path)
-    output_folder.mkdir(exist_ok=True, parents=True)
-    # Record 5 seconds of video
-    realsense = RealSenseRecorder(config, output_folder)
-    realsense.start()
-    wait(5)
-    realsense.stop()
-    typer.echo(f"Test output: {output_folder}")
+    ):
+    if not device_id:
+        config = get_config(config_path)
+        if device_class:
+            # Filter to only the devices of the given class
+            config = Config({
+                d_class: ds
+                for d_class, ds in config.items() if d_class == device_class
+                })
+            if not config:
+                typer_warn(
+                    f"No device of class `{device_class}` found in "
+                    f"{config_path}"
+                    )
+                return
+        recorder = Recorder(config, output_folder)
+        output_folder = recorder(seconds=5)
+        for _device_class in config.keys():
+            DEVICE_CLASSES[_device_class].show_results(output_folder)
+    else:
+        # Both device_class and device_id are given
+        devices = get_device_class(device_class).find()
+        try:
+            device = devices[device_id]
+        except KeyError:
+            raise AttributeError(
+                f'Invalid device id `{device_id}` for class `{device_class}`'
+                )
+        config = Config({device_class: {device_id: device}})
+        recorder = Recorder(config, output_folder)
+        output_folder = recorder(seconds=5)
 
 
 if __name__ == '__main__':
