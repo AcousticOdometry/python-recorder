@@ -8,32 +8,63 @@ from datetime import datetime
 
 
 class Recorder:
+    next_output = None
+    devices = []
 
     def __init__(
         self,
         config: Config,
         output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER,
-        name: Optional[str] = None,
+        setup_name: Optional[str] = None,
         ):
+        """Recorder object, used to record data from configured devices.
+
+        Args:
+            config (Config): Configuration dictionary.
+
+            output_folder (Optional[Path]): Root folder for the recorded
+                output. For each recording session, a subfolder will be created
+                based on the `setup_name` provided. Defaults to
+                DEFAULT_OUTPUT_FOLDER.
+            setup_name (Optional[str]): The recorded output will be placed in a
+                subfolder of `output_folder` with the provided name. If not
+                provided, it will default to a name based on the current date
+                and time. If `False` is provided instead, the recorder will not
+                be fully initialized and an additionall call to `setup` will be
+                required.
+        """
         self.config = config
         # Initialize the output folder
-        output_folder.mkdir(parents=True, exist_ok=True)
+        self.output_folder = output_folder
+        self.output_folder.mkdir(parents=True, exist_ok=True)
+        if setup_name is not False:
+            self.setup(setup_name)
+    
+    def setup(self, name: Optional[str] = None):
+        # Initialize next recording output
         if not name:
             name = datetime.now().strftime('date_%Y-%m-%d;time_%H-%M-%S')
-        self.output_folder = output_folder / name
-        self.output_folder.mkdir(exist_ok=False)
+        self.next_output = self.output_folder / name
+        self.next_output.mkdir(exist_ok=False)
         # Initialize all devices
-        self.devices = self.config.devices(self.output_folder)
+        self.devices = self.config.devices(self.next_output)
 
     def start(self):
-        # Start the recording
+        # Start the recording. Does nothing if the recording is not setup.
         for d in self.devices:
             d.start()
 
-    def stop(self):
+    def stop(self) -> Path:
         # Stop the recording
         for d in self.devices:
             d.stop()
+        # Cleanup devices, setup must be called to start recording again
+        self.devices = []
+        if not self.next_output:
+            raise RuntimeError('Recording not setup')
+        output = Path(str(self.next_output))
+        self.next_output = None
+        return output
 
     def wait(self, seconds: Optional[int] = None):
         # Wait for user input
@@ -47,7 +78,4 @@ class Recorder:
     def __call__(self, seconds: Optional[int] = None) -> Path:
         self.start()
         self.wait(seconds=seconds)
-        self.stop()
-        # Cleanup devices, a new instance of the recorder must be called
-        del self.devices
-        return self.output_folder
+        return self.stop()

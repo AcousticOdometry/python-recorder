@@ -6,7 +6,8 @@ camera, RODE VideoMicNTG and smartLav+ microphones
 # Setup
 
 Clone this repository to your local machine. Detailed instructions about
-cloning repositories and installing python dependencies can be found [here](https://docs.google.com/document/d/15Mj3x9Im7Yfz3sPo5f4dUjQZgabjVtIL2RBHvM2798E/edit?usp=sharing).
+cloning repositories and installing python dependencies can be found
+[here](https://docs.google.com/document/d/15Mj3x9Im7Yfz3sPo5f4dUjQZgabjVtIL2RBHvM2798E/edit?usp=sharing).
 
 ## Install Python (3.5 - 3.9)
 Do not install the latest version of Python (currently 3.10) as it is not
@@ -55,10 +56,10 @@ python vao-recorder.py config
 
 Test that the chosen audio devices are working
 ```
-python vao-recorder.py test-microphones
+python vao-recorder.py test microphone
 ```
 
-Record an experiment with the chosen devices
+Record an experiment with the configured devices
 ```
 python vao-recorder.py record
 ```
