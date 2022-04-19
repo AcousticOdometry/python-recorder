@@ -1,5 +1,4 @@
 from recorder.config import Config, DEFAULT_OUTPUT_FOLDER
-from recorder.io import yaml_dump
 
 from time import sleep
 from pathlib import Path
@@ -14,12 +13,14 @@ class Recorder:
         self,
         config: Config,
         output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER,
-        # TODO paramters into output_folder name
+        name: Optional[str] = None,
         ):
         self.config = config
+        # Initialize the output folder
         output_folder.mkdir(parents=True, exist_ok=True)
-        self.output_folder = output_folder / \
-            datetime.now().strftime('date_%Y-%m-%d;time_%H-%M-%S')
+        if not name:
+            name = datetime.now().strftime('date_%Y-%m-%d;time_%H-%M-%S')
+        self.output_folder = output_folder / name
         self.output_folder.mkdir(exist_ok=False)
         # Initialize all devices
         self.devices = self.config.devices(self.output_folder)
