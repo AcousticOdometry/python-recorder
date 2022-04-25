@@ -2,7 +2,6 @@ from recorder.io import yaml_dump
 
 from typing import Dict
 from pathlib import Path
-from warnings import warn
 from datetime import datetime
 from abc import ABC, ABCMeta, abstractmethod
 

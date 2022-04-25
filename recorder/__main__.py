@@ -185,9 +185,13 @@ def test(
         output_folder = recorder(seconds=5)
 
 
-if __name__ == '__main__':
+def main():
     # Launch the command line application
     try:
-        app()
+        app(prog_name='recorder')
     except RuntimeError as e:
         typer.secho(str(e), fg='red')
+
+
+if __name__ == '__main__':
+    main()

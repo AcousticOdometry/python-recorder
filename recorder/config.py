@@ -3,11 +3,10 @@ from recorder.device import Device, DEVICE_CLASSES
 
 from typing import List
 from pathlib import Path
-from datetime import datetime
 
-DEFAULT_CONFIG_PATH = Path.cwd() / 'vao-recorder.yaml'
+DEFAULT_CONFIG_PATH = Path.cwd() / 'python-recorder.yaml'
 
-DEFAULT_OUTPUT_FOLDER = Path.cwd() / 'output' 
+DEFAULT_OUTPUT_FOLDER = Path.cwd() / 'recordings' 
 
 
 class Config(dict):

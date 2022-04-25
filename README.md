@@ -1,7 +1,11 @@
-# Visual and Acoustic recorder
+# python-recorder
 
 Visual and Acoustic Odometry recorder using python. Devices: RealSense D435i
 camera, RODE VideoMicNTG and smartLav+ microphones
+
+Framework
+
+TODO ros
 
 # Setup
 
