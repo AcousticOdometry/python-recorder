@@ -2,6 +2,7 @@ from recorder.config import Config, DEFAULT_OUTPUT_FOLDER
 
 from time import sleep
 from pathlib import Path
+from copy import deepcopy
 from typing import Optional
 from typer import progressbar
 from datetime import datetime
@@ -33,14 +34,17 @@ class Recorder:
                 be fully initialized and an additionall call to `setup` will be
                 required.
         """
-        self.config = config
+        self.input_config = config
+        self.config = deepcopy(self.input_config)
         # Initialize the output folder
         self.output_folder = output_folder
         self.output_folder.mkdir(parents=True, exist_ok=True)
         if setup_name is not False:
             self.setup(setup_name)
     
-    def setup(self, name: Optional[str] = None):
+    def setup(self, name: Optional[str] = None, reset_config: bool = True):
+        if reset_config:
+            self.config = deepcopy(self.input_config)
         # Initialize next recording output
         if not name:
             name = datetime.now().strftime('date_%Y-%m-%d;time_%H-%M-%S')

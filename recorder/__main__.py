@@ -156,7 +156,6 @@ def record(
     seconds: int = typer.Argument(None, help="Number of seconds to record"),
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
-    # TODO pass kwargs to listener. Or make subcommands for each listener
     ):
     config = get_config(config_path)
     recorder = Recorder(config, output_folder)
@@ -170,6 +169,7 @@ def listen(
     listener_class: str = LISTENER_CLASS_ARGUMENT,
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
+    # TODO pass kwargs to listener. Or make subcommands for each listener
     ):
     config = get_config(config_path)
     recorder = Recorder(config, output_folder)
