@@ -1,5 +1,6 @@
 from recorder.config import DEFAULT_CONFIG_PATH, DEFAULT_OUTPUT_FOLDER
 from recorder.device import Device, DEVICE_CLASSES
+from recorder.listener import Listener, LISTENER_CLASSES
 from recorder.io import yaml_dump
 from recorder import Recorder, Config
 
@@ -25,7 +26,6 @@ DEFAULT_CONFIG_PATH_OPTION = typer.Option(
     DEFAULT_CONFIG_PATH,
     help="Path to a `yaml` config file. Run `config` command to generate one."
     )
-
 DEVICE_CLASS_ARGUMENT = typer.Argument(
     None,
     metavar='DEVICE_CLASS',
@@ -39,6 +39,14 @@ DEVICE_ID_ARGUMENT = typer.Argument(
     metavar='DEVICE_ID',
     help=(
         "Numerical id of the device to use. Use the show command to see the available devices for each device class."
+        )
+    )
+LISTENER_CLASS_ARGUMENT = typer.Argument(
+    'localhost',
+    metavar='LISTENER_CLASS',
+    help=(
+        "Case independent name of the listener class to use. Available "
+        f"options: {[d for d in DEVICE_CLASSES.keys()]}."
         )
     )
 VERBOSE_OPTION = typer.Option(False, "--verbose", "-v", help="Verbose output.")
@@ -58,13 +66,23 @@ def choose(message: str, choices: list):
         })['choice']
 
 
-def get_device_class(name: str):
+def get_device_class(name: str) -> Device:
     try:
         return DEVICE_CLASSES[name.lower()]
     except KeyError:
         raise RuntimeError(
             f"Invalid device class `{name}`. Available options: "
             f"{list(DEVICE_CLASSES.keys())}"
+            )
+
+
+def get_listener_class(name: str) -> Listener:
+    try:
+        return LISTENER_CLASSES[name.lower()]
+    except KeyError:
+        raise RuntimeError(
+            f"Invalid listener class `{name}`. Available options: "
+            f"{list(LISTENER_CLASSES.keys())}"
             )
 
 
@@ -138,12 +156,25 @@ def record(
     seconds: int = typer.Argument(None, help="Number of seconds to record"),
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
+    # TODO pass kwargs to listener. Or make subcommands for each listener
     ):
     config = get_config(config_path)
     recorder = Recorder(config, output_folder)
     if typer.confirm("Recording ready, start?", default=True):
         output_folder = recorder(seconds=seconds)
         typer.echo(f"Recording finished, data saved to {output_folder}")
+
+
+@app.command(help='Listen to an external command to start recording')
+def listen(
+    listener_class: str = LISTENER_CLASS_ARGUMENT,
+    config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
+    output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
+    ):
+    config = get_config(config_path)
+    recorder = Recorder(config, output_folder)
+    listener = get_listener_class(listener_class)(recorder)
+    listener.listen()
 
 
 @app.command(help="Test device recording")
@@ -184,9 +215,6 @@ def test(
         recorder = Recorder(config, output_folder)
         output_folder = recorder(seconds=5)
 
-@app.command(help='Listen to an external command to start recording')
-def listen(to: str):
-    raise NotImplementedError(f"Listen to {to} is not implemented.")
 
 def main():
     # Launch the command line application

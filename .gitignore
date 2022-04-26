@@ -1,7 +1,7 @@
 .vscode
-output/
+recordings/
 
-vao-recorder.yaml
+python-recorder.yaml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
