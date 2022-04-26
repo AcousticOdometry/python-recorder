@@ -10,6 +10,7 @@ class RealSense(Device):
         if not (streams := self.config.get('streams', [])):
             raise AttributeError('No `streams` found in device')
         assert 'serial_number' in self.config
+        sn = self.config['serial_number']
         self.rsconfig = rs.config()
         self.rsconfig.enable_device(sn)
         for stream in streams.values():
