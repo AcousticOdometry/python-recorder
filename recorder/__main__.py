@@ -63,12 +63,12 @@ def get_device_class(name: str):
         return DEVICE_CLASSES[name.lower()]
     except KeyError:
         raise RuntimeError(
-            f'Invalid device class `{name}`. Available options: '
-            f'{list(DEVICE_CLASSES.keys())}'
+            f"Invalid device class `{name}`. Available options: "
+            f"{list(DEVICE_CLASSES.keys())}"
             )
 
 
-@app.command(help='Display the available devices')
+@app.command(help="Display the available devices")
 def show(
         device_class: Optional[str] = DEVICE_CLASS_ARGUMENT,
         verbose: bool = VERBOSE_OPTION
@@ -109,7 +109,7 @@ def config_device_class(device: Device) -> dict:
     return choices
 
 
-@app.command(help='Create a configuration `yaml` file.')
+@app.command(help="Create a configuration `yaml` file.")
 def config(output: Path = DEFAULT_CONFIG_PATH_OPTION) -> dict:
     config = {}
     for name, device_class in DEVICE_CLASSES.items():
@@ -133,7 +133,7 @@ def get_config(path: Path = DEFAULT_CONFIG_PATH) -> dict:
         return Config.from_yaml(path)
 
 
-@app.command(help='Record data from the configured devices')
+@app.command(help="Record data from the configured devices")
 def record(
     seconds: int = typer.Argument(None, help="Number of seconds to record"),
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
@@ -141,12 +141,12 @@ def record(
     ):
     config = get_config(config_path)
     recorder = Recorder(config, output_folder)
-    if typer.confirm('Recording ready, start?', default=True):
+    if typer.confirm("Recording ready, start?", default=True):
         output_folder = recorder(seconds=seconds)
-        typer.echo(f'Recording finished, data saved to {output_folder}')
+        typer.echo(f"Recording finished, data saved to {output_folder}")
 
 
-@app.command(help='Test device recording')
+@app.command(help="Test device recording")
 def test(
     device_class: Optional[str] = DEVICE_CLASS_ARGUMENT,
     device_id: Optional[int] = DEVICE_ID_ARGUMENT,
@@ -184,6 +184,9 @@ def test(
         recorder = Recorder(config, output_folder)
         output_folder = recorder(seconds=5)
 
+@app.command(help='Listen to an external command to start recording')
+def listen(to: str):
+    raise NotImplementedError(f"Listen to {to} is not implemented.")
 
 def main():
     # Launch the command line application
