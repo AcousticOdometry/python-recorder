@@ -3,22 +3,23 @@ from recorder.io import yaml_dump
 
 import socket
 
-from flask import Flask
+from flask import Flask, request
 
 app = Flask(__name__)
 
 app.secret_key = __name__
 
+# Troubleshooting:
+# https://stackoverflow.com/questions/62705271/connect-to-flask-server-from-other-devices-on-same-network
+
 # ! Workaround: Global variable because it is not JSON serializable and can't
 # ! be stored in Flask.session.
 recorder = Recorder(Config.from_yaml(), setup_name=False)
-print(yaml_dump(recorder.config))
-
 
 @app.route('/setup', methods=['GET'])
 def setup():
-    # TODO get recording name from request
-    recorder.setup()
+    name = request.args.get('name', None)
+    recorder.setup(name=name)
     return str(recorder.next_output.name)
 
 
