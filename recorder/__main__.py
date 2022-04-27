@@ -172,7 +172,7 @@ def listen(
     # TODO pass kwargs to listener. Or make subcommands for each listener
     ):
     config = get_config(config_path)
-    recorder = Recorder(config, output_folder)
+    recorder = Recorder(config, output_folder, setup_name=False)
     listener = get_listener_class(listener_class)(recorder)
     listener.listen()
 
