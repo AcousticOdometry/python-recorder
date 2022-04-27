@@ -7,6 +7,12 @@ Framework
 
 TODO ros
 
+## Listeners
+`listen` command does not setup the recorder. The listener is responsible of
+setting up the recorder as it sees fit. In the case of the `localhost`
+listener, a `GET` request to the `/setup` endpoint is necessary before trying
+to start the recording via the `/start` endpoint.
+
 # Setup
 
 Clone this repository to your local machine. Detailed instructions about
