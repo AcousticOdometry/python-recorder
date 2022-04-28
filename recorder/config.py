@@ -1,4 +1,4 @@
-from recorder.io import yaml_load
+from recorder.io import yaml_dump, yaml_load
 from recorder.device import Device, DEVICE_CLASSES
 
 from typing import List
@@ -6,7 +6,7 @@ from pathlib import Path
 
 DEFAULT_CONFIG_PATH = Path.cwd() / 'python-recorder.yaml'
 
-DEFAULT_OUTPUT_FOLDER = Path.cwd() / 'recordings' 
+DEFAULT_OUTPUT_FOLDER = Path.cwd() / 'recordings'
 
 
 class Config(dict):
@@ -46,11 +46,17 @@ class Config(dict):
                     f'{list(DEVICE_CLASSES.keys())}'
                     )
             for index, device_config in _devices.items():
-                devices.append(
-                    device_class(
-                        index=index,
-                        output_folder=output_folder,
-                        config=device_config,
+                try:
+                    devices.append(
+                        device_class(
+                            index=index,
+                            output_folder=output_folder,
+                            config=device_config,
+                            )
                         )
-                    )
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Could not initialize {str(device_class)}{index} with "
+                        f"config:\n {yaml_dump(device_config)}\n {str(e)}"
+                        ) from e
         return devices
