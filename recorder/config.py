@@ -56,7 +56,7 @@ class Config(dict):
                         )
                 except Exception as e:
                     raise RuntimeError(
-                        f"Could not initialize {str(device_class)}{index} "
-                        f"with config:\n {yaml_dump(device_config)}\n {str(e)}"
+                        f"Could not initialize {str(device_class)} {index} "
+                        f"with config:\n{yaml_dump(device_config)}\n{str(e)}"
                         ) from e
         return devices

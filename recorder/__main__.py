@@ -214,6 +214,7 @@ def test(
         config = Config({device_class: {device_id: device}})
         recorder = Recorder(config, output_folder)
         output_folder = recorder(seconds=5)
+        device_class.show_results(output_folder)
 
 
 def main():
