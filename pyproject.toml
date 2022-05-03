@@ -8,7 +8,7 @@ license = "MIT"
 packages = [{include = "recorder"}]
 
 [tool.poetry.scripts]
-recorder = "recorder.__main__:app"
+recorder = "recorder.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.8"
