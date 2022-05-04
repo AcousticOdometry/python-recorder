@@ -3,9 +3,10 @@
 Device independent framework for synchronized recording. Originally designed to
 record audio and video from a Realsense camera and several microphones. This
 framework is designed for researchers collecting multimodal datasets. It
-provides an easy command line application which allows to configure, test and
-use the available sensors in the host machine. The framework can be divided in
-two main features:
+provides an easy to use command line application that allows to configure, test and
+use the available sensors in the host machine while providing intuitive mechanisms 
+to synchronize the recording devices with the specific event that one wants to record. 
+The framework can be divided in two main features:
 
 ## Devices
 They provide a common interface to initialize, `start` and `stop` a recording,
