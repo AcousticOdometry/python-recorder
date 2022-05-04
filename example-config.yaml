@@ -10,4 +10,77 @@ microphone:
     channels: 2
     samplerate: 44100.0
     samplewidth: 2 # Sample width in bytes when stored in the `wav` file
-realsense: {}
+realsense:
+  0:
+    name: Intel RealSense D435I
+    description: The camera is placed facing forwards parallel to the ground
+    serial_number: '918512073836'
+    streams:
+      Accel:
+        format: motion_xyz32f
+        framerate: 63
+        intrinsics:
+        - - 1.0
+          - 0.0
+          - 0.0
+          - 0.0
+        - - 0.0
+          - 1.0
+          - 0.0
+          - 0.0
+        - - 0.0
+          - 0.0
+          - 1.0
+          - 0.0
+        type: accel
+      Color:
+        coeffs:
+        - 0.0
+        - 0.0
+        - 0.0
+        - 0.0
+        - 0.0
+        format: rgb8
+        framerate: 30
+        fx: 921.0354614257812
+        fy: 921.243408203125
+        height: 720
+        model: inverse_brown_conrady
+        ppx: 645.3656616210938
+        ppy: 357.691650390625
+        type: color
+        width: 1280
+      Depth:
+        coeffs:
+        - 0.0
+        - 0.0
+        - 0.0
+        - 0.0
+        - 0.0
+        format: z16
+        framerate: 30
+        fx: 422.5686950683594
+        fy: 422.5686950683594
+        height: 480
+        model: brown_conrady
+        ppx: 427.68402099609375
+        ppy: 239.21221923828125
+        type: depth
+        width: 848
+      Gyro:
+        format: motion_xyz32f
+        framerate: 200
+        intrinsics:
+        - - 1.0
+          - 0.0
+          - 0.0
+          - 0.0
+        - - 0.0
+          - 1.0
+          - 0.0
+          - 0.0
+        - - 0.0
+          - 0.0
+          - 1.0
+          - 0.0
+        type: gyro

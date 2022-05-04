@@ -155,8 +155,10 @@ def get_config(path: Path = DEFAULT_CONFIG_PATH) -> dict:
     try:
         return Config.from_yaml(path)
     except AttributeError:
-        typer_warn(f"No configuration found in {path}. Generate one.")
-        return Config.from_yaml(path)
+        raise RuntimeError(
+            f"No configuration found in {path}. Generate one with the "
+            "`config` command."
+            )
 
 
 @app.command(help="Record data from the configured devices")
