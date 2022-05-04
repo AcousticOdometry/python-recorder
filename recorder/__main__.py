@@ -1,4 +1,6 @@
-from recorder.config import DEFAULT_CONFIG_PATH, DEFAULT_OUTPUT_FOLDER
+from recorder.config import (
+    DEFAULT_CONFIG_PATH, DEFAULT_OUTPUT_FOLDER, DEFAULT_TEST_OUTPUT_FOLDER
+    )
 from recorder.device import Device, DEVICE_CLASSES
 from recorder.listener import Listener, LISTENER_CLASSES
 from recorder.io import yaml_dump
@@ -18,6 +20,12 @@ app = typer.Typer(
 
 DEFAULT_OUTPUT_FOLDER_OPTION = typer.Option(
     DEFAULT_OUTPUT_FOLDER,
+    help="""
+    Path to a folder where the recorded data and the recording configuration
+    will be stored."""
+    )
+DEFAULT_TEST_OUTPUT_FOLDER_OPTION = typer.Option(
+    DEFAULT_TEST_OUTPUT_FOLDER,
     help="""
     Path to a folder where the recorded data and the recording configuration
     will be stored."""
@@ -182,7 +190,7 @@ def test(
     device_class: Optional[str] = DEVICE_CLASS_ARGUMENT,
     device_id: Optional[int] = DEVICE_ID_ARGUMENT,
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
-    output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
+    output_folder: Optional[Path] = DEFAULT_TEST_OUTPUT_FOLDER_OPTION,
     ):
     if not device_id:
         config = get_config(config_path)

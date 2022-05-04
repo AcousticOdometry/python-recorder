@@ -8,6 +8,8 @@ DEFAULT_CONFIG_PATH = Path.cwd() / 'python-recorder.yaml'
 
 DEFAULT_OUTPUT_FOLDER = Path.cwd() / 'recordings'
 
+DEFAULT_TEST_OUTPUT_FOLDER = Path.cwd() / 'test-recordings'
+
 
 class Config(dict):
 
