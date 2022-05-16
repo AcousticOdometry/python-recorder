@@ -68,7 +68,7 @@ or on MacOS and Linux:
 source venv/bin/activate
 ```
 
-Install from [Pypi](https://pypi.org/project/python-recorder/). There are
+Install from [pypi](https://pypi.org/project/python-recorder/). There are
 optional dependencies that define which devices and listeners are available,
 due to the fact some of these dependencies are not available for all operative
 systems. Check [extras](#extras) for more information about it.
