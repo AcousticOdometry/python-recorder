@@ -194,7 +194,7 @@ def test(
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_TEST_OUTPUT_FOLDER_OPTION,
     ):
-    if not device_id:
+    if device_id is None:
         config = get_config(config_path)
         if device_class:
             # Filter to only the devices of the given class
