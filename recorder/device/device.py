@@ -45,7 +45,6 @@ class Device(ABC, metaclass=MetaDevice):
             dict: A dictionary of devices with a numeric `id` as key and a
             the device properties as value.
         """
-        pass
 
     def start(self) -> None:
         # Starts recording storing the start timestamp in configuration
