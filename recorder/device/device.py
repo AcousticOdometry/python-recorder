@@ -19,8 +19,10 @@ class Device(ABC, metaclass=MetaDevice):
 
     def __init__(self, index: int, output_folder: Path, config: dict):
         self.config = config
-        assert 'start_timestamp' not in self.config
-        assert 'end_timestamp' not in self.config
+        if 'start_timestamp' in self.config:
+            raise AssertionError
+        if 'end_timestamp' in self.config:
+            raise AssertionError
         self.index = index
         self.name = self.config.get('name', 'unknown')
         self.output_file = output_folder / f'{repr(self)}'
