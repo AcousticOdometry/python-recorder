@@ -70,7 +70,8 @@ class Recorder:
         self.next_output = None
         return output
 
-    def wait(self, seconds: Optional[int] = None):
+    @staticmethod
+    def wait(seconds: Optional[int] = None):
         # Wait for user input
         if seconds is None:
             input('Press `Enter` to stop recording.')
