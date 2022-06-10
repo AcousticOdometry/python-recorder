@@ -46,7 +46,8 @@ DEVICE_ID_ARGUMENT = typer.Argument(
     None,
     metavar='DEVICE_ID',
     help=(
-        "Numerical id of the device to use. Use the show command to see the available devices for each device class."
+        "Numerical id of the device to use. Use the show command to see the "
+        "available devices for each device class."
         )
     )
 LISTENER_CLASS_ARGUMENT = typer.Argument(
@@ -137,18 +138,18 @@ def config_device_class(device: Device) -> dict:
 
 @app.command(help="Create a configuration `yaml` file.")
 def config(output: Path = DEFAULT_CONFIG_PATH_OPTION) -> dict:
-    config = {}
+    _config = {}
     for name, device_class in DEVICE_CLASSES.items():
         device_config = config_device_class(device_class)
         if device_config:
-            config[name] = device_config
-    yaml_dump(config, to_file=output)
+            _config[name] = device_config
+    yaml_dump(_config, to_file=output)
     typer.echo(
         f"Configuration file written to {output}, it can be edited manually. "
         "Check the repository for an explained example file "
         "https://github.com/AcousticOdometry/VAO-recorder/blob/main/example-config.yaml"
         )
-    return config
+    return _config
 
 
 def get_config(path: Path = DEFAULT_CONFIG_PATH) -> dict:
@@ -167,8 +168,8 @@ def record(
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
     ):
-    config = get_config(config_path)
-    recorder = Recorder(config, output_folder)
+    _config = get_config(config_path)
+    recorder = Recorder(_config, output_folder)
     if typer.confirm("Recording ready, start?", default=True):
         output_folder = recorder(seconds=seconds)
         typer.echo(f"Recording finished, data saved to {output_folder}")
@@ -181,8 +182,8 @@ def listen(
     output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
     # TODO pass kwargs to listener. Or make subcommands for each listener
     ):
-    config = get_config(config_path)
-    recorder = Recorder(config, output_folder, setup_name=False)
+    _config = get_config(config_path)
+    recorder = Recorder(_config, output_folder, setup_name=False)
     listener = get_listener_class(listener_class)(recorder)
     listener.listen()
 
@@ -195,22 +196,22 @@ def test(
     output_folder: Optional[Path] = DEFAULT_TEST_OUTPUT_FOLDER_OPTION,
     ):
     if device_id is None:
-        config = get_config(config_path)
+        _config = get_config(config_path)
         if device_class:
             # Filter to only the devices of the given class
-            config = Config({
+            _config = Config({
                 d_class: ds
-                for d_class, ds in config.items() if d_class == device_class
+                for d_class, ds in _config.items() if d_class == device_class
                 })
-            if not config:
+            if not _config:
                 typer_warn(
                     f"No device of class `{device_class}` found in "
                     f"{config_path}"
                     )
                 return
-        recorder = Recorder(config, output_folder)
+        recorder = Recorder(_config, output_folder)
         output_folder = recorder(seconds=5)
-        for _device_class in config.keys():
+        for _device_class in _config.keys():
             DEVICE_CLASSES[_device_class].show_results(output_folder)
     else:
         # Both device_class and device_id are given
@@ -221,8 +222,8 @@ def test(
             raise AttributeError(
                 f'Invalid device id `{device_id}` for class `{device_class}`'
                 )
-        config = Config({device_class: {device_id: device}})
-        recorder = Recorder(config, output_folder)
+        _config = Config({device_class: {device_id: device}})
+        recorder = Recorder(_config, output_folder)
         output_folder = recorder(seconds=5)
         DEVICE_CLASSES[device_class].show_results(output_folder)
 

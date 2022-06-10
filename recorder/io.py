@@ -28,5 +28,9 @@ def yaml_dump(data, to_file: Path = None) -> str:
 
 
 def yaml_load(from_file: Path) -> dict:
+    if not isinstance(from_file, Path):
+        raise ValueError(
+            f'`from_file` must be a Path object, not {type(from_file)}'
+            )
     with open(from_file, 'r', encoding="utf-8") as f:
         return yaml.safe_load(f)

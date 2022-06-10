@@ -37,7 +37,7 @@ class Device(ABC, metaclass=MetaDevice):
     @classmethod
     @abstractmethod
     def find(cls) -> Dict[int, dict]:
-        """Finds devices connected to the current system. 
+        """Finds devices connected to the current system.
 
         Returns:
             dict: A dictionary of devices with a numeric `id` as key and a

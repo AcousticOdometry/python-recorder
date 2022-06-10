@@ -8,7 +8,8 @@ from flask import Flask, request, Response
 # https://stackoverflow.com/questions/62705271/connect-to-flask-server-from-other-devices-on-same-network
 
 
-class EndpointAction(object):
+class EndpointAction:
+    response = None
 
     def __init__(self, action):
         self.action = action
