@@ -55,7 +55,7 @@ class RealSense(Device):
                     intrinsics = s.as_video_stream_profile().get_intrinsics()
                     streams[name].update({
                         'coeffs': intrinsics.coeffs,
-                        'model': str(intrinsics.model)[11:], # rm 'distortion.'
+                        'model': str(intrinsics.model)[11:],  # - 'distortion.'
                         'fx': intrinsics.fx,
                         'fy': intrinsics.fy,
                         'width': intrinsics.width,
