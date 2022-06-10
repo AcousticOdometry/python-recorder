@@ -19,14 +19,13 @@ class RealSense(Device):
                 'stream_type': getattr(rs.stream, stream['type']),
                 'format': getattr(rs.format, stream['format']),
                 'framerate': stream['framerate'],
-                }
+            }
             if 'width' in stream:
                 parameters['width'] = stream['width']
                 parameters['height'] = stream['height']
             self.rsconfig.enable_stream(**parameters)
         self.rsconfig.enable_record_to_file(
-            str(self.output_file.with_suffix('.bag'))
-            )
+            str(self.output_file.with_suffix('.bag')))
         self.pipeline = rs.pipeline()
 
     @classmethod
@@ -38,8 +37,7 @@ class RealSense(Device):
             config.enable_device(sn)
             config.enable_all_streams()
             pipeline_profile = config.resolve(
-                rs.pipeline_wrapper(rs.pipeline())
-                )
+                rs.pipeline_wrapper(rs.pipeline()))
             streams = {}
             for s in pipeline_profile.get_streams():
                 name = s.stream_name()
@@ -47,7 +45,7 @@ class RealSense(Device):
                     'format': str(s.format())[7:],  # remove 'format.'
                     'framerate': s.fps(),
                     'type': str(s.stream_type())[7:],  # remove 'stream.'
-                    }
+                }
                 if s.is_motion_stream_profile():
                     streams[name]['intrinsics'] = \
                         s.as_motion_stream_profile().get_motion_intrinsics().data
@@ -62,12 +60,12 @@ class RealSense(Device):
                         'height': intrinsics.height,
                         'ppx': intrinsics.ppx,
                         'ppy': intrinsics.ppy,
-                        })
+                    })
             devices[sn] = {
                 'name': d.get_info(rs.camera_info.name),
                 'streams': streams,
                 'serial_number': sn,
-                }
+            }
         return devices
 
     def _start(self):

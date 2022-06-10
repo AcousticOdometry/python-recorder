@@ -1,6 +1,5 @@
-from recorder.config import (
-    DEFAULT_CONFIG_PATH, DEFAULT_OUTPUT_FOLDER, DEFAULT_TEST_OUTPUT_FOLDER
-    )
+from recorder.config import (DEFAULT_CONFIG_PATH, DEFAULT_OUTPUT_FOLDER,
+                             DEFAULT_TEST_OUTPUT_FOLDER)
 from recorder.device import Device, DEVICE_CLASSES
 from recorder.listener import Listener, LISTENER_CLASSES
 from recorder.io import yaml_dump
@@ -16,48 +15,35 @@ from PyInquirer import prompt
 app = typer.Typer(
     add_completion=False,
     help=__doc__,
-    )
+)
 
-DEFAULT_OUTPUT_FOLDER_OPTION = typer.Option(
-    DEFAULT_OUTPUT_FOLDER,
-    help="""
+DEFAULT_OUTPUT_FOLDER_OPTION = typer.Option(DEFAULT_OUTPUT_FOLDER,
+                                            help="""
     Path to a folder where the recorded data and the recording configuration
-    will be stored."""
-    )
-DEFAULT_TEST_OUTPUT_FOLDER_OPTION = typer.Option(
-    DEFAULT_TEST_OUTPUT_FOLDER,
-    help="""
+    will be stored.""")
+DEFAULT_TEST_OUTPUT_FOLDER_OPTION = typer.Option(DEFAULT_TEST_OUTPUT_FOLDER,
+                                                 help="""
     Path to a folder where the recorded data and the recording configuration
-    will be stored."""
-    )
+    will be stored.""")
 DEFAULT_CONFIG_PATH_OPTION = typer.Option(
     DEFAULT_CONFIG_PATH,
-    help="Path to a `yaml` config file. Run `config` command to generate one."
-    )
+    help="Path to a `yaml` config file. Run `config` command to generate one.")
 DEVICE_CLASS_ARGUMENT = typer.Argument(
     None,
     metavar='DEVICE_CLASS',
     help=(
         "Case independent name of the device class to use. Available options: "
-        f"{list(DEVICE_CLASSES.keys())}."
-        )
-    )
+        f"{list(DEVICE_CLASSES.keys())}."))
 DEVICE_ID_ARGUMENT = typer.Argument(
     None,
     metavar='DEVICE_ID',
-    help=(
-        "Numerical id of the device to use. Use the show command to see the "
-        "available devices for each device class."
-        )
-    )
+    help=("Numerical id of the device to use. Use the show command to see the "
+          "available devices for each device class."))
 LISTENER_CLASS_ARGUMENT = typer.Argument(
     'localhost',
     metavar='LISTENER_CLASS',
-    help=(
-        "Case independent name of the listener class to use. Available "
-        f"options: {list(DEVICE_CLASSES.keys())}."
-        )
-    )
+    help=("Case independent name of the listener class to use. Available "
+          f"options: {list(DEVICE_CLASSES.keys())}."))
 VERBOSE_OPTION = typer.Option(False, "--verbose", "-v", help="Verbose output.")
 
 
@@ -72,7 +58,7 @@ def choose(message: str, choices: list):
         'name': 'choice',
         'message': message,
         'choices': choices,
-        })['choice']
+    })['choice']
 
 
 def get_device_class(name: str) -> Device:
@@ -81,8 +67,7 @@ def get_device_class(name: str) -> Device:
     except KeyError:
         raise RuntimeError(
             f"Invalid device class `{name}`. Available options: "
-            f"{list(DEVICE_CLASSES.keys())}"
-            )
+            f"{list(DEVICE_CLASSES.keys())}")
 
 
 def get_listener_class(name: str) -> Listener:
@@ -91,15 +76,14 @@ def get_listener_class(name: str) -> Listener:
     except KeyError:
         raise RuntimeError(
             f"Invalid listener class `{name}`. Available options: "
-            f"{list(LISTENER_CLASSES.keys())}"
-            )
+            f"{list(LISTENER_CLASSES.keys())}")
 
 
 @app.command(help="Display the available devices")
 def show(
     device_class: Optional[str] = DEVICE_CLASS_ARGUMENT,
     verbose: bool = VERBOSE_OPTION,
-    ):
+):
     if device_class:
         device_classes = [get_device_class(device_class)]
     else:
@@ -122,15 +106,13 @@ def config_device_class(device: Device) -> dict:
         typer_warn(f"Could not find {device} devices")
         return choices
     while typer.confirm(
-        f"Add {'another' if choices else 'a'} {device} device?"
-        ):
+            f"Add {'another' if choices else 'a'} {device} device?"):
         _id = choose(
             message=f"Select the {device} to add to the configuration:",
             choices=[{
                 'name': f"{_id} {d['name']}",
                 'value': _id
-                } for _id, d in devices.items()]
-            )
+            } for _id, d in devices.items()])
         choices[index] = devices[_id]
         index += 1
     return choices
@@ -148,7 +130,7 @@ def config(output: Path = DEFAULT_CONFIG_PATH_OPTION) -> dict:
         f"Configuration file written to {output}, it can be edited manually. "
         "Check the repository for an explained example file "
         "https://github.com/AcousticOdometry/VAO-recorder/blob/main/example-config.yaml"
-        )
+    )
     return _config
 
 
@@ -158,8 +140,7 @@ def get_config(path: Path = DEFAULT_CONFIG_PATH) -> dict:
     except AttributeError:
         raise RuntimeError(
             f"No configuration found in {path}. Generate one with the "
-            "`config` command."
-            )
+            "`config` command.")
 
 
 @app.command(help="Record data from the configured devices")
@@ -167,7 +148,7 @@ def record(
     seconds: int = typer.Argument(None, help="Number of seconds to record"),
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
-    ):
+):
     _config = get_config(config_path)
     recorder = Recorder(_config, output_folder)
     if typer.confirm("Recording ready, start?", default=True):
@@ -181,7 +162,7 @@ def listen(
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER_OPTION,
     # TODO pass kwargs to listener. Or make subcommands for each listener
-    ):
+):
     _config = get_config(config_path)
     recorder = Recorder(_config, output_folder, setup_name=False)
     listener = get_listener_class(listener_class)(recorder)
@@ -194,7 +175,7 @@ def test(
     device_id: Optional[int] = DEVICE_ID_ARGUMENT,
     config_path: Optional[Path] = DEFAULT_CONFIG_PATH_OPTION,
     output_folder: Optional[Path] = DEFAULT_TEST_OUTPUT_FOLDER_OPTION,
-    ):
+):
     if device_id is None:
         _config = get_config(config_path)
         if device_class:
@@ -202,12 +183,10 @@ def test(
             _config = Config({
                 d_class: ds
                 for d_class, ds in _config.items() if d_class == device_class
-                })
+            })
             if not _config:
-                typer_warn(
-                    f"No device of class `{device_class}` found in "
-                    f"{config_path}"
-                    )
+                typer_warn(f"No device of class `{device_class}` found in "
+                           f"{config_path}")
                 return
         recorder = Recorder(_config, output_folder)
         output_folder = recorder(seconds=5)
@@ -220,8 +199,7 @@ def test(
             device = devices[device_id]
         except KeyError:
             raise AttributeError(
-                f'Invalid device id `{device_id}` for class `{device_class}`'
-                )
+                f'Invalid device id `{device_id}` for class `{device_class}`')
         _config = Config({device_class: {device_id: device}})
         recorder = Recorder(_config, output_folder)
         output_folder = recorder(seconds=5)

@@ -22,7 +22,7 @@ class Config(dict):
     def devices(
         self,
         output_folder: Path = DEFAULT_OUTPUT_FOLDER,
-        ) -> List[Device]:
+    ) -> List[Device]:
         """Initializes all devices present in the dictionary with the provided
         output folder.
 
@@ -45,8 +45,7 @@ class Config(dict):
                 raise RuntimeError(
                     f'Invalid configuration file, {_device_class} is not a '
                     'valid device class. Available options: '
-                    f'{list(DEVICE_CLASSES.keys())}'
-                    )
+                    f'{list(DEVICE_CLASSES.keys())}')
             for index, device_config in _devices.items():
                 try:
                     devices.append(
@@ -54,11 +53,10 @@ class Config(dict):
                             index=index,
                             output_folder=output_folder,
                             config=device_config,
-                            )
-                        )
+                        ))
                 except Exception as e:
                     raise RuntimeError(
                         f"Could not initialize {str(device_class)} {index} "
                         f"with config:\n{yaml_dump(device_config)}\n{str(e)}"
-                        ) from e
+                    ) from e
         return devices
