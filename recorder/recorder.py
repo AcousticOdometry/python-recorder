@@ -41,7 +41,7 @@ class Recorder:
         self.output_folder.mkdir(parents=True, exist_ok=True)
         if setup_name is not False:
             self.setup(setup_name)
-    
+
     def setup(self, name: Optional[str] = None, reset_config: bool = True):
         if reset_config:
             self.config = deepcopy(self.input_config)

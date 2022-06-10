@@ -72,7 +72,7 @@ class RealSense(Device):
 
     def _start(self):
         self.pipeline.start(self.rsconfig)
-    
+
     def _stop(self):
         self.pipeline.stop()
 
