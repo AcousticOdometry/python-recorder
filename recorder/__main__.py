@@ -97,8 +97,8 @@ def get_listener_class(name: str) -> Listener:
 
 @app.command(help="Display the available devices")
 def show(
-        device_class: Optional[str] = DEVICE_CLASS_ARGUMENT,
-        verbose: bool = VERBOSE_OPTION
+    device_class: Optional[str] = DEVICE_CLASS_ARGUMENT,
+    verbose: bool = VERBOSE_OPTION,
     ):
     if device_class:
         device_classes = [get_device_class(device_class)]

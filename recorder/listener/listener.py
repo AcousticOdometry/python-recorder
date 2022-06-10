@@ -10,6 +10,7 @@ class MetaListener(ABCMeta):
     def __repr__(cls) -> str:
         return cls.__name__.lower()
 
+
 class Listener(ABC, metaclass=MetaListener):
 
     def __init__(self, recorder: Recorder) -> None:
