@@ -17,7 +17,7 @@ class Recorder:
         config: Config,
         output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER,
         setup_name: Optional[str] = None,
-        ):
+    ):
         """Recorder object, used to record data from configured devices.
 
         Args:

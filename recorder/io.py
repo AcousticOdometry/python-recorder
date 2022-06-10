@@ -11,13 +11,11 @@ def wave_read(filename: Path) -> Tuple[np.ndarray, int]:
     with wave.open(str(filename), 'rb') as f:
         return (
             np.reshape(
-                np.frombuffer(
-                    f.readframes(f.getnframes()),
-                    dtype=f'int{f.getsampwidth()*8}'
-                    ), (-1, f.getnchannels())
-                ),
+                np.frombuffer(f.readframes(f.getnframes()),
+                              dtype=f'int{f.getsampwidth()*8}'),
+                (-1, f.getnchannels())),
             f.getframerate(),
-            )
+        )
 
 
 def yaml_dump(data, to_file: Path = None) -> str:
@@ -30,7 +28,6 @@ def yaml_dump(data, to_file: Path = None) -> str:
 def yaml_load(from_file: Path) -> dict:
     if not isinstance(from_file, Path):
         raise ValueError(
-            f'`from_file` must be a Path object, not {type(from_file)}'
-            )
+            f'`from_file` must be a Path object, not {type(from_file)}')
     with open(from_file, 'r', encoding="utf-8") as f:
         return yaml.safe_load(f)

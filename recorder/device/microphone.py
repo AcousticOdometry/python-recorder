@@ -11,7 +11,7 @@ from inspect import signature
 class Microphone(Device):
     stream_keyword_arguments = [
         str(s) for s in signature(sd.RawInputStream).parameters
-        ]
+    ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,12 +25,11 @@ class Microphone(Device):
         stream_kwargs = {
             k: self.config[k]
             for k in self.config.keys() if k in self.stream_keyword_arguments
-            }
+        }
         self.stream = self._get_stream(
             device=self.config['index'],
             output_path=self.output_file.with_suffix('.wav'),
-            **stream_kwargs
-            )
+            **stream_kwargs)
 
     @staticmethod
     def _get_stream(
@@ -41,7 +40,7 @@ class Microphone(Device):
         channels: int = None,  # Number of channels
         **stream_kwargs,  # Additional keyword arguments for sd.RawInputStream
         # https://python-sounddevice.readthedocs.io/en/0.4.4/api/streams.html#sounddevice.InputStream
-        ) -> sd.InputStream:
+    ) -> sd.InputStream:
         f = wave.open(str(output_path), 'wb')
         f.setnchannels(int(channels))
         f.setframerate(int(samplerate))
@@ -53,8 +52,7 @@ class Microphone(Device):
             channels=channels,
             callback=lambda data, N, t, status: f.writeframesraw(data),
             finished_callback=f.close,
-            **stream_kwargs
-            )
+            **stream_kwargs)
 
     @classmethod
     def find(cls) -> dict:
@@ -66,7 +64,7 @@ class Microphone(Device):
                     'index': idx,
                     'samplerate': int(d['default_samplerate']),
                     'channels': int(d['max_input_channels']),
-                    }
+                }
         return devices
 
     def _start(self):

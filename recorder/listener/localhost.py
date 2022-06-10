@@ -28,15 +28,18 @@ class Localhost(Listener):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.app = Flask('python-recorder')
-        self.app.add_url_rule(
-            '/setup', '/setup', EndpointAction(self.setup), methods=['GET']
-            )
-        self.app.add_url_rule(
-            '/start', '/start', EndpointAction(self.start), methods=['GET']
-            )
-        self.app.add_url_rule(
-            '/stop', '/stop', EndpointAction(self.stop), methods=['GET']
-            )
+        self.app.add_url_rule('/setup',
+                              '/setup',
+                              EndpointAction(self.setup),
+                              methods=['GET'])
+        self.app.add_url_rule('/start',
+                              '/start',
+                              EndpointAction(self.start),
+                              methods=['GET'])
+        self.app.add_url_rule('/stop',
+                              '/stop',
+                              EndpointAction(self.stop),
+                              methods=['GET'])
 
     def setup(self):
         name = request.args.get('name', None)
