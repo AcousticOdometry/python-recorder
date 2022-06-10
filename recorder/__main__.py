@@ -39,7 +39,7 @@ DEVICE_CLASS_ARGUMENT = typer.Argument(
     metavar='DEVICE_CLASS',
     help=(
         "Case independent name of the device class to use. Available options: "
-        f"{[d for d in DEVICE_CLASSES.keys()]}."
+        f"{list(DEVICE_CLASSES.keys())}."
         )
     )
 DEVICE_ID_ARGUMENT = typer.Argument(
@@ -55,7 +55,7 @@ LISTENER_CLASS_ARGUMENT = typer.Argument(
     metavar='LISTENER_CLASS',
     help=(
         "Case independent name of the listener class to use. Available "
-        f"options: {[d for d in DEVICE_CLASSES.keys()]}."
+        f"options: {list(DEVICE_CLASSES.keys())}."
         )
     )
 VERBOSE_OPTION = typer.Option(False, "--verbose", "-v", help="Verbose output.")

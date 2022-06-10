@@ -41,7 +41,7 @@ class Recorder:
         self.output_folder.mkdir(parents=True, exist_ok=True)
         if setup_name is not False:
             self.setup(setup_name)
-    
+
     def setup(self, name: Optional[str] = None, reset_config: bool = True):
         if reset_config:
             self.config = deepcopy(self.input_config)
@@ -70,7 +70,8 @@ class Recorder:
         self.next_output = None
         return output
 
-    def wait(self, seconds: Optional[int] = None):
+    @staticmethod
+    def wait(seconds: Optional[int] = None):
         # Wait for user input
         if seconds is None:
             input('Press `Enter` to stop recording.')

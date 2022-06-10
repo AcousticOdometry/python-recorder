@@ -15,9 +15,12 @@ class Microphone(Device):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert 'index' in self.config
-        assert 'samplerate' in self.config
-        assert 'channels' in self.config
+        if 'index' not in self.config:
+            raise AssertionError
+        if 'samplerate' not in self.config:
+            raise AssertionError
+        if 'channels' not in self.config:
+            raise AssertionError
         # Signature from sounddevice.RawInputStream
         stream_kwargs = {
             k: self.config[k]

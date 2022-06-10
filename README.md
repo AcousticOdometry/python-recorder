@@ -41,7 +41,7 @@ class](./recorder/listener/listener.py) and overriding its abstract methods. An
 example of another listener would be a `ROS` node that subscribes to a specific
 topic and triggers the recording according to a specific set of messages.
 
-Listeners can be setup through the `listen`. This command does not initialize
+Listeners can be setup through the `listen` command. This command does not initialize
 the devices. The listener is responsible of executing `recorder.setup()` as it
 sees fit. In the case of the `localhost` listener, a `GET` request to the
 `/setup` endpoint is necessary before trying to start the recording via the
