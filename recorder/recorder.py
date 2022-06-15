@@ -17,7 +17,7 @@ class Recorder:
         config: Config,
         output_folder: Optional[Path] = DEFAULT_OUTPUT_FOLDER,
         setup_name: Optional[str] = None,
-        ):
+    ):
         """Recorder object, used to record data from configured devices.
 
         Args:
@@ -60,8 +60,7 @@ class Recorder:
                 d.start()
             except Exception as e:
                 raise RuntimeError(
-                    f'Failed to start recording with device {d}: {e}'
-                    )
+                    f'Failed to start recording with device {d}: {e}')
 
     def stop(self) -> Path:
         # Stop the recording
