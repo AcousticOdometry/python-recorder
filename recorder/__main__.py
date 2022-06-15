@@ -217,7 +217,7 @@ def test(
         # Both device_class and device_id are given
         devices = get_device_class(device_class).find()
         try:
-            device = devices[device_id]
+            device = devices[str(device_id)]
         except KeyError:
             raise AttributeError(
                 f'Invalid device id `{device_id}` for class `{device_class}`'

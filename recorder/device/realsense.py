@@ -34,6 +34,8 @@ class RealSense(Device):
         devices = {}
         for d in rs.context().query_devices():
             sn = d.get_info(rs.camera_info.serial_number)
+            device_name = d.get_info(rs.camera_info.name)
+            del d
             config = rs.config()
             config.enable_device(sn)
             config.enable_all_streams()
@@ -64,7 +66,7 @@ class RealSense(Device):
                         'ppy': intrinsics.ppy,
                         })
             devices[sn] = {
-                'name': d.get_info(rs.camera_info.name),
+                'name': device_name,
                 'streams': streams,
                 'serial_number': sn,
                 }

@@ -56,7 +56,12 @@ class Recorder:
     def start(self):
         # Start the recording. Does nothing if the recording is not setup.
         for d in self.devices:
-            d.start()
+            try:
+                d.start()
+            except Exception as e:
+                raise RuntimeError(
+                    f'Failed to start recording with device {d}: {e}'
+                    )
 
     def stop(self) -> Path:
         # Stop the recording
