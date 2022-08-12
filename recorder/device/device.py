@@ -21,7 +21,7 @@ class Device(ABC, metaclass=MetaDevice):
         self.config = config
         if 'start_timestamp' in self.config:
             raise AssertionError
-        if 'end_timestamp' in self.config:
+        if 'stop_timestamp' in self.config:
             raise AssertionError
         self.index = index
         self.name = self.config.get('name', 'unknown')
@@ -50,6 +50,7 @@ class Device(ABC, metaclass=MetaDevice):
         # Starts recording storing the start timestamp in configuration
         self.config['start_timestamp'] = datetime.now().timestamp()
         self._start()
+        self.config['started_timestamp'] = datetime.now().timestamp()
 
     @abstractmethod
     def _start(self) -> None:
@@ -58,8 +59,9 @@ class Device(ABC, metaclass=MetaDevice):
 
     def stop(self):
         # Stops recording storing the end timestamp in configuration
+        self.config['stop_timestamp'] = datetime.now().timestamp()
         self._stop()
-        self.config['end_timestamp'] = datetime.now().timestamp()
+        self.config['stopped_timestamp'] = datetime.now().timestamp()
 
     @abstractmethod
     def _stop(self):
