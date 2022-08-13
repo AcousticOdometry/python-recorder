@@ -31,3 +31,9 @@ all = ["pyrealsense2"]
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
+
+[tool.yapf]
+based_on_style = "pep8"
+indent_closing_brackets = true
+coalesce_brackets = true
+indent_dictionary_value = true
