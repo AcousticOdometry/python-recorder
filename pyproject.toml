@@ -1,11 +1,13 @@
 [tool.poetry]
 name = "python-recorder"
 version = "0.0.3"
-description = ""
+description = "Device independent framework for synchronized recording, designed for researchers collecting multimodal datasets."
 authors = ["Andreu Gimenez <esdandreu@gmail.com>"]
 readme = "README.md"
 license = "MIT"
 packages = [{include = "recorder"}]
+homepage = "https://github.com/AcousticOdometry/python-recorder"
+repository = "https://github.com/AcousticOdometry/python-recorder"
 
 [tool.poetry.scripts]
 recorder = "recorder.__main__:main"
