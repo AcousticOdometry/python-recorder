@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "python-recorder"
-version = "0.0.3"
+version = "0.0.4"
 description = "Device independent framework for synchronized recording, designed for researchers collecting multimodal datasets."
 authors = ["Andreu Gimenez <esdandreu@gmail.com>"]
 readme = "README.md"
